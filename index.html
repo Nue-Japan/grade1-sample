@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>電気・電子回路 インタラクティブ学習</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-blue-600">電気・電子回路 インタラクティブ学習</h1>
+            <p class="text-lg text-gray-600 mt-2">工業高校1年生向け基礎講座</p>
+        </header>
+
+        <nav class="flex flex-wrap justify-center mb-8 rounded-lg shadow-sm">
+            <button class="nav-tab active" onclick="showSection('home')">🏠 ホーム</button>
+            <button class="nav-tab" onclick="showSection('electric')">⚡ 電気回路</button>
+            <button class="nav-tab" onclick="showSection('digital')">🔢 デジタル基礎</button>
+            <button class="nav-tab" onclick="showSection('logic')">🤖 論理回路</button>
+        </nav>
+
+        <!-- ホームセクション -->
+        <main id="section-home" class="content-section active">
+            <div class="text-center mb-8 p-4 bg-white/50 backdrop-blur-sm rounded-xl shadow-md border border-gray-200">
+                <h2 class="text-2xl font-bold text-blue-700">はじめに：すべての基本「電子」</h2>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                <h3 class="text-2xl font-bold mb-4 text-gray-800">電子とは？</h3>
+                <div class="flex flex-col md:flex-row gap-6 items-center">
+                    <div class="text-8xl">⚛️</div>
+                    <div>
+                        <p class="mb-4 text-gray-700 leading-relaxed">
+                            私たちの身の回りにあるすべての物質は、「原子」というとても小さな粒からできています。そして、その原子の中心には「原子核」があり、その周りをいくつかの「電子（でんし）」が飛び回っています。
+
+[Image of Bohr model of an atom]
+
+                        </p>
+                        <p class="mb-4 text-gray-700 leading-relaxed">
+                            電子は、マイナス（－）の電気を持つ性質があります。普段は原子核のプラス（＋）の電気に引きつけられて安定していますが、外部からエネルギーが加わると、原子から飛び出して自由に動き回ることができます。この自由に動き回れる電子を「自由電子」と呼びます。
+                        </p>
+                        <h4 class="text-xl font-bold mb-2 text-gray-800">電流の正体</h4>
+                        <p class="text-gray-700 leading-relaxed">
+                            導線（電線）に電圧をかけると、この自由電子たちが一斉に同じ方向に動き出します。この<strong class="text-blue-600">「電子の流れ」こそが、「電流」の正体</strong>です。
+                        </p>
+                         <p class="mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-lg">
+                            <strong>豆知識：</strong> 電流の向きは「プラス(＋)からマイナス(－)」と決められていますが、電子の実際の流れは「マイナス(－)からプラス(＋)」です。これは、電流の向きを決めた後に、電子の存在が発見されたためです。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- 電気回路セクション -->
+        <main id="section-electric" class="content-section">
+             <div class="text-center mb-8 p-4 bg-white/50 backdrop-blur-sm rounded-xl shadow-md border border-gray-200">
+                <h2 class="text-2xl font-bold text-blue-700">電気回路の探求</h2>
+                <p class="mt-2 text-gray-700">
+                    ここでは、電流や電圧の測定範囲を広げるための「分流器」と「倍率器」、そして未知の抵抗値を精密に測定する「ホイートストンブリッジ」について、計算機やシミュレータを使いながら実践的に学びます。
+                </p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 分流器・倍率器カード -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                    <h3 class="text-2xl font-bold mb-4 text-gray-800">1. 分流器・倍率器 計算機</h3>
+                    <div class="mb-4 border-b border-gray-200">
+                        <nav class="flex -mb-px">
+                            <button id="subtab-shunt" class="sub-tab active" onclick="switchMeter('shunt')">分流器</button>
+                            <button id="subtab-multiplier" class="sub-tab" onclick="switchMeter('multiplier')">倍率器</button>
+                        </nav>
+                    </div>
+                    <div id="shunt-calc">
+                        <p class="mb-2 text-gray-600"><b>【目的】</b>大きな電流を測定したいとき、電流計が壊れないように測定範囲を広げるために使います。</p>
+                        <p class="mb-4 text-gray-600"><b>【仕組み】</b>測定したい大きな電流の一部だけを電流計に流し、残りを別の抵抗（分流器）に流します。これにより、電流計には測定可能な小さな電流しか流れません。</p>
+                        <div class="circuit-diagram mb-4">
+                            <!-- Shunt Diagram -->
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="font-semibold text-gray-700">電流計の内部抵抗 (rA) [Ω]</label>
+                                <input type="number" id="shunt-ra" value="9" class="w-full p-2 border rounded-md mt-1">
+                            </div>
+                            <div>
+                                <label class="font-semibold text-gray-700">測定範囲を何倍にしたいか (n)</label>
+                                <input type="number" id="shunt-n" value="10" class="w-full p-2 border rounded-md mt-1">
+                            </div>
+                            <button onclick="calculateShunt()" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition">計算</button>
+                            <div class="mt-4 p-4 bg-blue-50 rounded-lg">
+                                <p class="font-bold">公式の考え方</p>
+                                <p class="text-sm text-gray-700">並列接続なので、電流計(A)と分流器(Rs)にかかる電圧は同じです。<br>
+                                (Aに流れる電流) × (Aの内部抵抗) = (Rsに流れる電流) × (Rsの抵抗)<br>
+                                この関係から、以下の公式が導き出せます。</p>
+                                <p class="font-mono text-center my-2 text-lg">Rs = rA / (n - 1)</p>
+                                <p id="shunt-result" class="text-xl font-bold text-blue-700 text-center mt-2"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="multiplier-calc" class="hidden">
+                         <p class="mb-2 text-gray-600"><b>【目的】</b>大きな電圧を測定したいとき、電圧計が壊れないように測定範囲を広げるために使います。</p>
+                        <p class="mb-4 text-gray-600"><b>【仕組み】</b>測定したい大きな電圧を、電圧計と別の抵抗（倍率器）で分担（分圧）します。これにより、電圧計には測定可能な小さな電圧しかかかりません。</p>
+                        <div class="circuit-diagram mb-4">
+                            <!-- Multiplier Diagram -->
+                        </div>
+                         <div class="space-y-4">
+                            <div>
+                                <label class="font-semibold text-gray-700">電圧計の内部抵抗 (rV) [kΩ]</label>
+                                <input type="number" id="multiplier-rv" value="10" class="w-full p-2 border rounded-md mt-1">
+                            </div>
+                            <div>
+                                <label class="font-semibold text-gray-700">測定範囲を何倍にしたいか (n)</label>
+                                <input type="number" id="multiplier-n" value="10" class="w-full p-2 border rounded-md mt-1">
+                            </div>
+                            <button onclick="calculateMultiplier()" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition">計算</button>
+                            <div class="mt-4 p-4 bg-blue-50 rounded-lg">
+                                <p class="font-bold">公式の考え方</p>
+                                <p class="text-sm text-gray-700">直列接続なので、電圧計(V)と倍率器(Rm)に流れる電流は同じです。<br>
+                                全体の電圧は、それぞれの抵抗値に比例して分圧されます。<br>
+                                この関係から、以下の公式が導き出せます。</p>
+                                <p class="font-mono text-center my-2 text-lg">Rm = rV * (n - 1)</p>
+                                <p id="multiplier-result" class="text-xl font-bold text-blue-700 text-center mt-2"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ブリッジ回路カード -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                    <h3 class="text-2xl font-bold mb-4 text-gray-800">2. ホイートストンブリッジ</h3>
+                    <p class="mb-2 text-gray-600"><b>【目的】</b>値がわからない抵抗(Rx)の値を、とても正確に測定するために使われる回路です。</p>
+                    <p class="mb-4 text-gray-600"><b>【仕組み】</b>検流計(G)に電流が流れなくなる「平衡状態」を見つけます。このとき、抵抗の比が等しくなっていることを利用して、未知の抵抗値を計算します。</p>
+                    <div class="circuit-diagram mb-4">
+                        <!-- Bridge Diagram -->
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label>R1 [Ω]: <input type="number" id="bridge-r1" value="6" class="w-full p-2 border rounded-md"></label>
+                        </div>
+                        <div>
+                            <label>R2 [Ω]: <input type="number" id="bridge-r2" value="4" class="w-full p-2 border rounded-md"></label>
+                        </div>
+                         <div>
+                            <label>R3 [Ω]: <input type="number" id="bridge-r3" value="2" class="w-full p-2 border rounded-md"></label>
+                        </div>
+                        <div class="p-4 bg-green-50 rounded-lg text-center">
+                            <p class="font-semibold text-green-800">平衡に必要なRx</p>
+                            <p id="bridge-ideal-rx" class="text-xl font-bold text-green-700"></p>
+                        </div>
+                    </div>
+                     <div class="mb-4">
+                        <label for="bridge-rx-slider" class="font-semibold">あなたのRx調整値: <span id="bridge-rx-value" class="font-bold text-blue-600">1.00</span> Ω</label>
+                        <input type="range" id="bridge-rx-slider" min="0" max="10" step="0.01" value="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="p-4 bg-green-50 rounded-lg mt-4">
+                        <p class="font-bold">平衡条件の考え方</p>
+                        <p class="text-sm text-gray-700">検流計(G)に電流が流れないのは、Gの両端の電圧が等しい時です。このとき、R1とR2の電圧の比、R3とRxの電圧の比が等しくなり、「たすき掛け」した抵抗の積が等しくなります。</p>
+                        <p class="text-center font-mono my-2 text-lg">R1 * Rx = R2 * R3</p>
+                    </div>
+                    <div class="chart-container mt-4">
+                        <canvas id="bridgeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- デジタル基礎セクション -->
+        <main id="section-digital" class="content-section">
+             <div class="text-center mb-8 p-4 bg-white/50 backdrop-blur-sm rounded-xl shadow-md border border-gray-200">
+                <h2 class="text-2xl font-bold text-purple-700">デジタル基礎：数の世界</h2>
+                <p class="mt-2 text-gray-700">コンピュータの言語である2進数と、人間が使う10進数、そしてプログラムでよく使われる16進数。これらの数の関係と変換方法をマスターしましょう。</p>
+            </div>
+            <div class="grid grid-cols-1 gap-8">
+                <!-- 進数変換ツール -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                    <h3 class="text-2xl font-bold mb-4 text-gray-800">1. 進数変換ツール</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="font-semibold text-gray-700">10進数 (Decimal)</label>
+                            <input type="text" id="conv-dec" class="w-full p-2 border rounded-md mt-1 font-mono text-lg" placeholder="例: 13">
+                        </div>
+                        <div>
+                            <label class="font-semibold text-gray-700">2進数 (Binary)</label>
+                            <input type="text" id="conv-bin" class="w-full p-2 border rounded-md mt-1 font-mono text-lg" placeholder="例: 1101">
+                        </div>
+                        <div>
+                            <label class="font-semibold text-gray-700">16進数 (Hexadecimal)</label>
+                            <input type="text" id="conv-hex" class="w-full p-2 border rounded-md mt-1 font-mono text-lg" placeholder="例: D">
+                        </div>
+                    </div>
+                </div>
+                <!-- 進数変換の解説 -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                    <h3 class="text-2xl font-bold mb-4 text-gray-800">2. 進数変換の方法</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- 10進数 -> 2進数 -->
+                        <div class="conversion-card">
+                            <h4 class="font-bold text-lg mb-2">10進数 → 2進数</h4>
+                            <p>10進数を「0」になるまで「2」で割り続け、その時の<strong class="text-blue-600">「余り」を下から順に</strong>並べます。</p>
+                            <p class="example-text">例：10進数の「13」を2進数に変換</p>
+                            <pre class="code-block">13 ÷ 2 = 6  ... 余り 1 ↑
+ 6 ÷ 2 = 3  ... 余り 0 |
+ 3 ÷ 2 = 1  ... 余り 1 |
+ 1 ÷ 2 = 0  ... 余り 1 |
+答え: 1101</pre>
+                        </div>
+                        <!-- 2進数 -> 10進数 -->
+                        <div class="conversion-card">
+                            <h4 class="font-bold text-lg mb-2">2進数 → 10進数</h4>
+                            <p>2進数の各桁に、その桁の<strong class="text-blue-600">「重み（2のべき乗）」を掛けて</strong>、すべてを足し合わせます。</p>
+                             <p class="example-text">例：2進数の「1101」を10進数に変換</p>
+                            <pre class="code-block">  1      1      0      1  (2進数)
+  ×      ×      ×      ×
+ 2³     2²     2¹     2⁰  (重み)
+  ||     ||     ||     ||
+  8  +   4  +   0  +   1  = 13
+答え: 13</pre>
+                        </div>
+                        <!-- 2進数 -> 16進数 -->
+                        <div class="conversion-card">
+                            <h4 class="font-bold text-lg mb-2">2進数 → 16進数</h4>
+                            <p>2進数を<strong class="text-blue-600">右から4桁ずつ</strong>区切り、それぞれのグループを16進数に変換します。</p>
+                             <p class="example-text">例：2進数の「11010110」を16進数に変換</p>
+                            <pre class="code-block">1101 | 0110
+  ↓      ↓
+  D    |  6    (10=A,11=B,12=C,13=D...)
+答え: D6</pre>
+                        </div>
+                        <!-- 16進数 -> 2進数 -->
+                        <div class="conversion-card">
+                            <h4 class="font-bold text-lg mb-2">16進数 → 2進数</h4>
+                            <p>16進数の各桁を、それぞれ<strong class="text-blue-600">4桁の2進数に</strong>変換して並べます。</p>
+                            <p class="example-text">例：16進数の「D6」を2進数に変換</p>
+                            <pre class="code-block">  D    |  6
+  ↓      ↓
+1101 | 0110
+答え: 11010110</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- 論理回路セクション -->
+        <main id="section-logic" class="content-section">
+            <div class="text-center mb-8 p-4 bg-white/50 backdrop-blur-sm rounded-xl shadow-md border border-gray-200">
+                <h2 class="text-2xl font-bold text-purple-700">論理ゲート・エクスプローラー</h2>
+                <p class="mt-2 text-gray-700">デジタル回路は「論理ゲート」の組み合わせでできています。各ゲートの働きを、シミュレータやタイムチャートで探求しましょう。</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                <div class="flex flex-wrap gap-2 justify-center mb-6">
+                    <button class="logic-gate-btn active" onclick="selectLogicGate('AND')">AND</button>
+                    <button class="logic-gate-btn" onclick="selectLogicGate('OR')">OR</button>
+                    <button class="logic-gate-btn" onclick="selectLogicGate('NOT')">NOT</button>
+                    <button class="logic-gate-btn" onclick="selectLogicGate('NAND')">NAND</button>
+                    <button class="logic-gate-btn" onclick="selectLogicGate('NOR')">NOR</button>
+                    <button class="logic-gate-btn" onclick="selectLogicGate('XOR')">XOR</button>
+                    <button class="logic-gate-btn" onclick="selectLogicGate('XNOR')">XNOR</button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- 左側：説明とシミュレータ -->
+                    <div>
+                        <h3 class="text-2xl font-bold mb-2 text-gray-800" id="gate-title">ANDゲート</h3>
+                        <p class="mb-4 text-gray-600" id="gate-description">入力Aと入力Bが両方とも「1」(HIGH)のときだけ、出力Yが「1」になります。「論理積」とも呼ばれます。</p>
+                        
+                        <div class="flex items-center justify-around p-4 border rounded-md bg-gray-50">
+                            <div class="text-center">
+                                <label class="font-bold">入力A</label>
+                                <input type="checkbox" id="gate-input-a" class="gate-input">
+                            </div>
+                            <div id="gate-input-b-container" class="text-center">
+                                <label class="font-bold">入力B</label>
+                                <input type="checkbox" id="gate-input-b" class="gate-input">
+                            </div>
+                            <div class="logic-gate-symbol text-purple-600" id="gate-symbol"></div>
+                            <div class="text-center">
+                                <label class="font-bold">出力Y</label>
+                                 <div id="gate-output" class="gate-output">0</div>
+                            </div>
+                        </div>
+                        <div class="mt-6">
+                            <h4 class="font-bold text-lg text-center mb-2">真理値表</h4>
+                            <table id="truth-table" class="w-full truth-table"></table>
+                        </div>
+                    </div>
+                    <!-- 右側：タイムチャート -->
+                    <div>
+                        <h3 class="text-2xl font-bold mb-2 text-gray-800">タイムチャート</h3>
+                        <p class="mb-4 text-gray-600">時間と共に変化する入力信号(A, B)に対して、出力(Y)がどのように変化するかを示したグラフです。</p>
+                        <div class="chart-container h-80 max-h-80">
+                            <canvas id="timeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script src="script.js" defer></script>
+</body>
+</html>
+

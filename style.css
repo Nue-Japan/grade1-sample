@@ -1,0 +1,166 @@
+body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+    background-color: #f8f7f4;
+    color: #4a4a4a;
+}
+
+/* --- Navigation --- */
+.nav-tab {
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+    border-bottom: 3px solid transparent;
+}
+.nav-tab.active {
+    color: #3b82f6;
+    border-bottom-color: #3b82f6;
+}
+.nav-tab:not(.active) {
+    color: #6b7280;
+}
+.nav-tab:hover:not(.active) {
+    background-color: #f3f4f6;
+}
+
+.sub-tab {
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    border-bottom-width: 2px;
+    border-color: transparent;
+    color: #6b7280;
+}
+.sub-tab:hover {
+    color: #111827;
+    border-color: #d1d5db;
+}
+.sub-tab.active {
+    color: #3b82f6;
+    border-color: #3b82f6;
+}
+
+.content-section {
+    display: none;
+}
+.content-section.active {
+    display: block;
+}
+
+/* --- Circuit Diagrams --- */
+.circuit-diagram {
+    border: 2px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    background-color: #f9fafb;
+}
+.component {
+    border: 1px solid #374151;
+    padding: 0.25rem 0.5rem;
+    background-color: white;
+    z-index: 10;
+}
+.wire {
+    position: absolute;
+    background-color: #374151;
+}
+.chart-container {
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    height: 250px;
+    max-height: 300px;
+}
+
+/* --- Digital Fundamentals --- */
+.conversion-card {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+.example-text {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+.code-block {
+    background-color: #1f2937;
+    color: #d1d5db;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    font-family: monospace;
+    white-space: pre;
+}
+
+/* --- Logic Gates --- */
+.logic-gate-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    color: #374151;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.logic-gate-btn:hover {
+    background-color: #f9fafb;
+}
+.logic-gate-btn:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px #a78bfa;
+}
+.logic-gate-btn.active {
+    background-color: #8b5cf6;
+    color: #ffffff;
+    border-color: #8b5cf6;
+}
+.logic-gate-btn.active:hover {
+    background-color: #7c3aed;
+}
+
+.gate-input {
+    height: 2rem;
+    width: 2rem;
+    margin-top: 0.5rem;
+}
+.gate-output {
+    height: 2rem;
+    width: 2rem;
+    margin-top: 0.5rem;
+    border-radius: 9999px;
+    border-width: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    transition: background-color 200ms ease-in-out;
+    background-color: #e5e7eb; /* Low */
+}
+.gate-output.high {
+    background-color: #facc15; /* High */
+}
+
+.logic-gate-symbol {
+    font-size: 3rem;
+    font-family: monospace;
+    line-height: 1;
+}
+.truth-table td, .truth-table th {
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem;
+    text-align: center;
+}
+
