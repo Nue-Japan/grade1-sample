@@ -264,14 +264,57 @@ function generateCircuitProblem() {
 function drawCircuitDiagram() {
     const container = document.getElementById('circuit-diagram-problem');
     const { type, r1, r2, r3 } = currentCircuitProblem.resistors;
-    const resistorSVG = (x, y, val, vert = false) => `<g ${vert?`transform="rotate(90 ${x} ${y})"`:''}><path d="M ${x} ${y} h 20 l 5 -10 l 10 20 l 10 -20 l 10 20 l 5 -10 h 20" stroke="black" fill="none" stroke-width="2"/><text ${vert?`x="${x+15}" y="${y+5}"`:`x="${x+40}" y="${y-5}"`} font-size="14">${val}Ω</text></g>`;
+    // フォントサイズを大きくし、見やすいフォントファミリーを指定
+    const resistorSVG = (x, y, val, vert = false) => `<g ${vert?`transform="rotate(90 ${x} ${y})"`:''}><path d="M ${x} ${y} h 20 l 5 -10 l 10 20 l 10 -20 l 10 20 l 5 -10 h 20" stroke="black" fill="none" stroke-width="2"/><text ${vert?`x="${x+15}" y="${y+5}"`:`x="${x+40}" y="${y-5}"`} font-size="16" font-family="sans-serif">${val}Ω</text></g>`;
     let svg = '';
+    let viewBoxWidth = 320;
+    
     switch (type) {
-        case 'series': svg=`<line x1="10" y1="50" x2="50" y2="50" stroke="black" stroke-width="2"/>${resistorSVG(50,50,r1)}${resistorSVG(150,50,r2)}<line x1="250" y1="50" x2="290" y2="50" stroke="black" stroke-width="2"/>`; break;
-        case 'parallel': svg=`<path d="M 50 50 h -40 v -30 h 120 v 30 h -40 m -40 0 v 30 h 120 v -30 h -80" stroke="black" fill="none" stroke-width="2"/>${resistorSVG(70,20,r1)}${resistorSVG(70,80,r2)}`; break;
-        case 'series-parallel': svg=`<line x1="10" y1="75" x2="50" y2="75" stroke="black" stroke-width="2"/>${resistorSVG(50,75,r1)}<path d="M 150 75 h 20 m 0 -30 v 60 m -20 0 h 20 v -60 h 80 v 60 h 20 m 0 -30 h 20" stroke="black" fill="none" stroke-width="2"/>${resistorSVG(190,45,r2)}${resistorSVG(190,105,r3)}`; break;
+        case 'series': 
+            svg=`<circle cx="10" cy="50" r="5" fill="black"/><text x="5" y="40">A</text>
+                 <line x1="10" y1="50" x2="50" y2="50" stroke="black" stroke-width="2"/>
+                 ${resistorSVG(50,50,r1)}
+                 ${resistorSVG(150,50,r2)}
+                 <line x1="250" y1="50" x2="290" y2="50" stroke="black" stroke-width="2"/>
+                 <circle cx="290" cy="50" r="5" fill="black"/><text x="285" y="40">B</text>`; 
+            break;
+        case 'parallel': 
+            viewBoxWidth = 260;
+            svg=`<circle cx="10" cy="50" r="5" fill="black"/><text x="5" y="40">A</text>
+                 <path d="M 10 50 H 30 V 20 H 50" stroke="black" fill="none" stroke-width="2"/>
+                 <path d="M 150 20 H 170 V 50 H 190" stroke="black" fill="none" stroke-width="2"/>
+                 ${resistorSVG(50,20,r1)}
+                 
+                 <path d="M 30 50 V 80 H 50" stroke="black" fill="none" stroke-width="2"/>
+                 <path d="M 150 80 H 170 V 50" stroke="black" fill="none" stroke-width="2"/>
+                 ${resistorSVG(50,80,r2)}
+                 <circle cx="190" cy="50" r="5" fill="black"/><text x="185" y="40">B</text>`;
+            break;
+        case 'series-parallel':
+            viewBoxWidth = 360;
+            svg = `
+                <circle cx="10" cy="75" r="5" fill="black"/><text x="5" y="65">A</text>
+                <rect x="155" y="25" width="150" height="100" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4"/>
+                <text x="195" y="20" font-size="12" fill="#64748b">並列部分</text>
+
+                <line x1="10" y1="75" x2="30" y2="75" stroke="black" stroke-width="2"/>
+                ${resistorSVG(30, 75, r1)}
+                <line x1="130" y1="75" x2="160" y2="75" stroke="black" stroke-width="2"/>
+                
+                <path d="M 160 75 V 40 H 180" stroke="black" fill="none" stroke-width="2"/>
+                ${resistorSVG(180, 40, r2)}
+                <path d="M 280 40 H 300 V 75" stroke="black" fill="none" stroke-width="2"/>
+                
+                <path d="M 160 75 V 110 H 180" stroke="black" fill="none" stroke-width="2"/>
+                ${resistorSVG(180, 110, r3)}
+                <path d="M 280 110 H 300 V 75" stroke="black" fill="none" stroke-width="2"/>
+
+                <line x1="300" y1="75" x2="330" y2="75" stroke="black" stroke-width="2"/>
+                <circle cx="330" cy="75" r="5" fill="black"/><text x="325" y="65">B</text>
+            `;
+            break;
     }
-    container.innerHTML = `<svg viewBox="0 0 320 150" width="320" height="150" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="${type==='series-parallel'?75:50}" r="5" fill="black"/><text x="5" y="${type==='series-parallel'?65:40}">A</text><circle cx="${type==='series'?290:(type==='parallel'?50:310)}" cy="${type==='series-parallel'?75:50}" r="5" fill="black"/><text x="${type==='series'?285:(type==='parallel'?45:305)}" y="${type==='series-parallel'?65:40}">B</text>${svg}</svg>`;
+    container.innerHTML = `<svg viewBox="0 0 ${viewBoxWidth} 150" width="${viewBoxWidth}" height="150" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
 }
 
 function generateCircuitOptions() {
@@ -385,4 +428,6 @@ function checkTimingAnswer() {
     document.getElementById('check-timing-answer-btn').classList.add('hidden');
     document.getElementById('next-timing-problem-btn').classList.remove('hidden');
 }
+
+
 
