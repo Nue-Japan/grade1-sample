@@ -10,18 +10,18 @@ let currentTimingProblem = {};
 let timingChartInstances = [];
 
 const gateInfo = {
-    'AND': { name: 'AND', truthTable: (a, b) => a & b },
-    'OR': { name: 'OR', truthTable: (a, b) => a | b },
-    'NOT': { name: 'NOT', truthTable: (a) => 1 - a },
-    'NAND': { name: 'NAND', truthTable: (a, b) => 1 - (a & b) },
-    'NOR': { name: 'NOR', truthTable: (a, b) => 1 - (a | b) },
-    'XOR': { name: 'XOR', truthTable: (a, b) => a ^ b },
-    'XNOR': { name: 'XNOR', truthTable: (a, b) => 1 - (a ^ b) },
+    'AND':  { title: 'ANDゲート',  description: '入力Aと入力Bが両方とも「1」(HIGH)のときだけ、出力Yが「1」になります。「論理積」とも呼ばれます。',  symbol: 'A・B', calculate: (a, b) => a & b },
+    'OR':   { title: 'ORゲート',   description: '入力Aまたは入力Bのどちらか一方、あるいは両方が「1」のとき、出力Yが「1」になります。「論理和」とも呼ばれます。', symbol: 'A+B', calculate: (a, b) => a | b },
+    'NOT':  { title: 'NOTゲート',  description: '入力を反転させて出力します。入力が「1」なら出力は「0」、入力が「0」なら出力は「1」になります。「否定」とも呼ばれます。', symbol: 'Ā',   calculate: (a, b) => 1 - a },
+    'NAND': { title: 'NANDゲート', description: 'ANDゲートの出力を反転させたものです。入力AとBが両方とも「1」のときだけ、出力が「0」になります。', symbol: 'A・B', calculate: (a, b) => 1 - (a & b) },
+    'NOR':  { title: 'NORゲート',  description: 'ORゲートの出力を反転させたものです。入力AとBが両方とも「0」のときだけ、出力が「1」になります。', symbol: 'A+B', calculate: (a, b) => 1 - (a | b) },
+    'XOR':  { title: 'XORゲート',  description: '入力AとBの値が異なるときだけ、出力が「1」になります。「排他的論理和」とも呼ばれます。', symbol: 'A⊕B', calculate: (a, b) => a ^ b },
+    'XNOR': { title: 'XNORゲート', description: 'XORゲートの出力を反転させたものです。入力AとBの値が同じときだけ、出力が「1」になります。', symbol: 'A⊕B', calculate: (a, b) => 1 - (a ^ b) }
 };
+
 
 // --- 初期化 ---
 document.addEventListener('DOMContentLoaded', () => {
-    // ページセクションの初期化
     showSection('home');
     
     // 電気回路
@@ -34,23 +34,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 論理回路
     selectLogicGate('AND');
+    document.getElementById('gate-input-a')?.addEventListener('change', updateGateOutput);
+    document.getElementById('gate-input-b')?.addEventListener('change', updateGateOutput);
     setupTimeChart();
 
     // 回路問題
     setupCircuitProblems();
     document.getElementById('check-circuit-answer-btn').addEventListener('click', checkCircuitAnswer);
-    document.getElementById('next-circuit-problem-btn').addEventListener('click', () => {
-        circuitProblemNumber++;
-        setupCircuitProblems();
-    });
+    document.getElementById('next-circuit-problem-btn').addEventListener('click', () => { circuitProblemNumber++; setupCircuitProblems(); });
 
     // タイムチャート問題
     setupTimingProblems();
     document.getElementById('check-timing-answer-btn').addEventListener('click', checkTimingAnswer);
-    document.getElementById('next-timing-problem-btn').addEventListener('click', () => {
-        timingProblemNumber++;
-        setupTimingProblems();
-    });
+    document.getElementById('next-timing-problem-btn').addEventListener('click', () => { timingProblemNumber++; setupTimingProblems(); });
 });
 
 // --- ページナビゲーション ---
@@ -76,24 +72,18 @@ function calculateShunt() {
     const ra = parseFloat(document.getElementById('shunt-ra').value);
     const n = parseFloat(document.getElementById('shunt-n').value);
     const resultEl = document.getElementById('shunt-result');
-    if (isNaN(ra) || isNaN(n) || n <= 1) {
-        resultEl.textContent = '無効な入力です';
-        return;
-    }
+    if (isNaN(ra) || isNaN(n) || n <= 1) { resultEl.textContent = '無効な入力です'; return; }
     const rs = ra / (n - 1);
-    resultEl.innerHTML = `分流器の抵抗 (Rs) = <span class="text-2xl">${rs.toFixed(2)}</span> Ω`;
+    resultEl.innerHTML = `Rs = <span class="text-2xl">${rs.toFixed(2)}</span> Ω`;
 }
 
 function calculateMultiplier() {
     const rv = parseFloat(document.getElementById('multiplier-rv').value);
     const n = parseFloat(document.getElementById('multiplier-n').value);
     const resultEl = document.getElementById('multiplier-result');
-    if (isNaN(rv) || isNaN(n) || n <= 1) {
-        resultEl.textContent = '無効な入力です';
-        return;
-    }
+    if (isNaN(rv) || isNaN(n) || n <= 1) { resultEl.textContent = '無効な入力です'; return; }
     const rm = rv * (n - 1);
-    resultEl.innerHTML = `倍率器の抵抗 (Rm) = <span class="text-2xl">${rm.toFixed(2)}</span> kΩ`;
+    resultEl.innerHTML = `Rm = <span class="text-2xl">${rm.toFixed(2)}</span> kΩ`;
 }
 
 function setupBridge() {
@@ -105,10 +95,8 @@ function setupBridge() {
         const userRx = parseFloat(inputs[3].value) || 0;
         
         document.getElementById('bridge-rx-value').textContent = userRx.toFixed(2);
-        
         let idealRx = (r1 > 0) ? (r2 * r3) / r1 : 0;
         document.getElementById('bridge-ideal-rx').textContent = idealRx.toFixed(2) + ' Ω';
-        
         let unbalance = (idealRx > 0) ? ((userRx - idealRx) / idealRx * 100) : (userRx > 0 ? 100 : 0);
         renderBridgeChart(unbalance);
     };
@@ -121,16 +109,8 @@ function renderBridgeChart(unbalance) {
     if (!ctx) return;
     if (!bridgeChart) {
         bridgeChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['検流計の振れ'],
-                datasets: [{ label: '不平衡度 (%)', data: [0], backgroundColor: ['#ef4444'], borderWidth: 1 }]
-            },
-            options: {
-                indexAxis: 'y',
-                scales: { x: { min: -100, max: 100, title: { display: true, text: '不平衡度 (%)' } } },
-                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }
-            }
+            type: 'bar', data: { labels: ['検流計の振れ'], datasets: [{ label: '不平衡度 (%)', data: [0], backgroundColor: ['#ef4444'], borderWidth: 1 }] },
+            options: { indexAxis: 'y', scales: { x: { min: -100, max: 100, title: { display: true, text: '不平衡度 (%)' } } }, responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
         });
     }
     bridgeChart.data.datasets[0].data[0] = unbalance;
@@ -140,21 +120,12 @@ function renderBridgeChart(unbalance) {
 
 // --- デジタル基礎セクション ---
 function setupConverter() {
-    const inputs = {
-        dec: document.getElementById('conv-dec'),
-        bin: document.getElementById('conv-bin'),
-        hex: document.getElementById('conv-hex')
-    };
+    const inputs = { dec: document.getElementById('conv-dec'), bin: document.getElementById('conv-bin'), hex: document.getElementById('conv-hex') };
     Object.keys(inputs).forEach(key => {
         inputs[key]?.addEventListener('input', () => {
             let val;
             const sourceElem = inputs[key];
-            if (sourceElem.value === '') {
-                inputs.dec.value = '';
-                inputs.bin.value = '';
-                inputs.hex.value = '';
-                return;
-            }
+            if (sourceElem.value === '') { inputs.dec.value = ''; inputs.bin.value = ''; inputs.hex.value = ''; return; }
             try {
                 switch (key) {
                     case 'dec': val = parseInt(sourceElem.value, 10); break;
@@ -174,11 +145,27 @@ function setupConverter() {
 // --- 論理回路セクション ---
 function selectLogicGate(gate) {
     currentLogicGate = gate;
+    const info = gateInfo[gate];
     document.querySelectorAll('.logic-gate-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === gate));
     
-    document.getElementById('gate-title').textContent = `${gate}ゲート`;
+    document.getElementById('gate-title').textContent = info.title;
+    document.getElementById('gate-description').textContent = info.description;
+    document.getElementById('gate-symbol').textContent = info.symbol;
+    document.getElementById('gate-input-b-container').style.display = gate === 'NOT' ? 'none' : '';
+
     renderTruthTable(gate);
+    updateGateOutput();
     renderTimeChart(gate);
+}
+
+function updateGateOutput() {
+    const inputA = document.getElementById('gate-input-a').checked;
+    const inputB = document.getElementById('gate-input-b').checked;
+    const outputEl = document.getElementById('gate-output');
+    let outputVal = gateInfo[currentLogicGate].calculate(Number(inputA), Number(inputB));
+    
+    outputEl.textContent = outputVal;
+    outputEl.classList.toggle('high', outputVal === 1);
 }
 
 function renderTruthTable(gate) {
@@ -190,10 +177,8 @@ function renderTruthTable(gate) {
     } else {
         headers = ['A', 'B', 'Y'];
         rows = [
-            [0, 0, gateInfo[gate].truthTable(0, 0)],
-            [0, 1, gateInfo[gate].truthTable(0, 1)],
-            [1, 0, gateInfo[gate].truthTable(1, 0)],
-            [1, 1, gateInfo[gate].truthTable(1, 1)]
+            [0, 0, gateInfo[gate].calculate(0, 0)], [0, 1, gateInfo[gate].calculate(0, 1)],
+            [1, 0, gateInfo[gate].calculate(1, 0)], [1, 1, gateInfo[gate].calculate(1, 1)]
         ];
     }
     tableEl.innerHTML = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
@@ -216,10 +201,8 @@ function setupTimeChart() {
         options: {
             responsive: true, maintainAspectRatio: false,
             scales: {
-                y: { min: -0.2, max: 1.2, display: false },
-                y1: { min: 1.8, max: 3.2, display: false },
-                y2: { min: 3.8, max: 5.2, display: false },
-                x: { ticks: { display: false }, grid: { drawOnChartArea: false } }
+                y: { min: -0.2, max: 1.2, display: false }, y1: { min: 1.8, max: 3.2, display: false },
+                y2: { min: 3.8, max: 5.2, display: false }, x: { ticks: { display: false }, grid: { drawOnChartArea: false } }
             },
              plugins: { legend: { position: 'right' } }
         }
@@ -230,7 +213,7 @@ function renderTimeChart(gate) {
     if (!timeChart) return;
     const inputA = [0, 0, 1, 1, 0, 1, 0, 1];
     const inputB = [0, 1, 0, 1, 1, 0, 1, 0];
-    let outputY = inputA.map((a, i) => gateInfo[gate].truthTable(a, inputB[i]));
+    let outputY = inputA.map((a, i) => gateInfo[gate].calculate(a, inputB[i]));
     
     timeChart.data.datasets[0].data = inputA;
     timeChart.data.datasets[1].data = inputB.map(b => b + 2);
@@ -243,13 +226,10 @@ function renderTimeChart(gate) {
 // --- 回路問題セクション ---
 function setupCircuitProblems() {
     document.getElementById('circuit-problem-number').textContent = circuitProblemNumber;
-    
-    // UIリセット
     document.getElementById('check-circuit-answer-btn').classList.remove('hidden');
     document.getElementById('next-circuit-problem-btn').classList.add('hidden');
     document.getElementById('circuit-result-message').textContent = '';
     document.getElementById('circuit-explanation-container').classList.add('hidden');
-
     generateCircuitProblem();
     drawCircuitDiagram();
     generateCircuitOptions();
@@ -258,10 +238,8 @@ function setupCircuitProblems() {
 function generateCircuitProblem() {
     const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
     const type = randInt(0, 2);
-    const r1 = randInt(1, 10) * 10;
-    const r2 = randInt(1, 10) * 10;
+    const r1 = randInt(1, 10) * 10; const r2 = randInt(1, 10) * 10;
     let r3, answer, explanation, resistors;
-
     switch (type) {
         case 0: // 直列
             answer = r1 + r2;
@@ -274,93 +252,38 @@ function generateCircuitProblem() {
             resistors = { type: 'parallel', r1, r2 };
             break;
         case 2: // 直並列
-            r3 = randInt(1, 10) * 10;
-            const r23_parallel = (r2 * r3) / (r2 + r3);
+            r3 = randInt(1, 10) * 10; const r23_parallel = (r2 * r3) / (r2 + r3);
             answer = r1 + r23_parallel;
             explanation = `まずR2とR3の並列部分を計算します。<br>R23 = (R2 * R3) / (R2 + R3) = (${r2} * ${r3}) / (${r2} + ${r3}) = ${r23_parallel.toFixed(2)} Ω<br>次に、R1と直列接続なので足し合わせます。<br>R = R1 + R23 = ${r1} + ${r23_parallel.toFixed(2)} = ${answer.toFixed(2)} Ω`;
             resistors = { type: 'series-parallel', r1, r2, r3 };
             break;
     }
-
-    currentCircuitProblem = {
-        resistors,
-        answer,
-        explanation
-    };
+    currentCircuitProblem = { resistors, answer, explanation };
 }
 
 function drawCircuitDiagram() {
     const container = document.getElementById('circuit-diagram-problem');
     const { type, r1, r2, r3 } = currentCircuitProblem.resistors;
-    
-    const resistorSVG = (x, y, val, vertical = false) => {
-        const rotation = vertical ? `transform="rotate(90, ${x}, ${y})"` : '';
-        const textPos = vertical ? `x="${x+15}" y="${y+5}"` : `x="${x+40}" y="${y-5}"`;
-        return `
-            <g ${rotation}>
-                <path d="M ${x} ${y} h 20 l 5 -10 l 10 20 l 10 -20 l 10 20 l 5 -10 h 20" stroke="black" fill="none" stroke-width="2"/>
-                <text ${textPos} font-size="14">${val}Ω</text>
-            </g>`;
-    };
-
-    let svgContent = '';
+    const resistorSVG = (x, y, val, vert = false) => `<g ${vert?`transform="rotate(90 ${x} ${y})"`:''}><path d="M ${x} ${y} h 20 l 5 -10 l 10 20 l 10 -20 l 10 20 l 5 -10 h 20" stroke="black" fill="none" stroke-width="2"/><text ${vert?`x="${x+15}" y="${y+5}"`:`x="${x+40}" y="${y-5}"`} font-size="14">${val}Ω</text></g>`;
+    let svg = '';
     switch (type) {
-        case 'series':
-            svgContent = `
-                <line x1="10" y1="50" x2="50" y2="50" stroke="black" stroke-width="2"/>
-                ${resistorSVG(50, 50, r1)}
-                ${resistorSVG(150, 50, r2)}
-                <line x1="250" y1="50" x2="290" y2="50" stroke="black" stroke-width="2"/>
-            `;
-            break;
-        case 'parallel':
-            svgContent = `
-                <path d="M 50 50 h -40 v -30 h 120 v 30 h -40 m -40 0 v 30 h 120 v -30 h -80" stroke="black" fill="none" stroke-width="2"/>
-                ${resistorSVG(70, 20, r1)}
-                ${resistorSVG(70, 80, r2)}
-            `;
-            break;
-        case 'series-parallel':
-             svgContent = `
-                <line x1="10" y1="75" x2="50" y2="75" stroke="black" stroke-width="2"/>
-                ${resistorSVG(50, 75, r1)}
-                <path d="M 150 75 h 20 m 0 -30 v 60 m -20 0 h 20 v -60 h 80 v 60 h 20 m 0 -30 h 20" stroke="black" fill="none" stroke-width="2"/>
-                ${resistorSVG(190, 45, r2)}
-                ${resistorSVG(190, 105, r3)}
-            `;
-            break;
+        case 'series': svg=`<line x1="10" y1="50" x2="50" y2="50" stroke="black" stroke-width="2"/>${resistorSVG(50,50,r1)}${resistorSVG(150,50,r2)}<line x1="250" y1="50" x2="290" y2="50" stroke="black" stroke-width="2"/>`; break;
+        case 'parallel': svg=`<path d="M 50 50 h -40 v -30 h 120 v 30 h -40 m -40 0 v 30 h 120 v -30 h -80" stroke="black" fill="none" stroke-width="2"/>${resistorSVG(70,20,r1)}${resistorSVG(70,80,r2)}`; break;
+        case 'series-parallel': svg=`<line x1="10" y1="75" x2="50" y2="75" stroke="black" stroke-width="2"/>${resistorSVG(50,75,r1)}<path d="M 150 75 h 20 m 0 -30 v 60 m -20 0 h 20 v -60 h 80 v 60 h 20 m 0 -30 h 20" stroke="black" fill="none" stroke-width="2"/>${resistorSVG(190,45,r2)}${resistorSVG(190,105,r3)}`; break;
     }
-    
-    container.innerHTML = `<svg viewBox="0 0 300 150" width="300" height="150" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="10" cy="50" r="5" fill="black" /><text x="5" y="40">A</text>
-        ${type === 'series' ? `<circle cx="290" cy="50" r="5" fill="black" /><text x="285" y="40">B</text>` : ''}
-        ${type === 'parallel' ? `<circle cx="50" cy="50" r="5" fill="black" /><text x="45" y="40">B</text>` : ''}
-        ${type === 'series-parallel' ? `<circle cx="310" cy="75" r="5" fill="black" /><text x="305" y="65">B</text>` : ''}
-        ${svgContent}
-    </svg>`;
+    container.innerHTML = `<svg viewBox="0 0 320 150" width="320" height="150" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="${type==='series-parallel'?75:50}" r="5" fill="black"/><text x="5" y="${type==='series-parallel'?65:40}">A</text><circle cx="${type==='series'?290:(type==='parallel'?50:310)}" cy="${type==='series-parallel'?75:50}" r="5" fill="black"/><text x="${type==='series'?285:(type==='parallel'?45:305)}" y="${type==='series-parallel'?65:40}">B</text>${svg}</svg>`;
 }
-
 
 function generateCircuitOptions() {
     const container = document.getElementById('circuit-options-container');
     const { answer } = currentCircuitProblem;
     let options = [parseFloat(answer.toFixed(2))];
-
     while (options.length < 4) {
-        let wrongAnswer = answer * (Math.random() * 1.5 + 0.5);
-        wrongAnswer = parseFloat(wrongAnswer.toFixed(2));
-        if (!options.includes(wrongAnswer) && wrongAnswer > 0) {
-            options.push(wrongAnswer);
-        }
+        let wrongAnswer = parseFloat((answer * (Math.random() * 1.5 + 0.5)).toFixed(2));
+        if (!options.includes(wrongAnswer) && wrongAnswer > 0) options.push(wrongAnswer);
     }
-
-    // Shuffle options
     options.sort(() => Math.random() - 0.5);
-
-    container.innerHTML = options.map(opt => `
-        <button class="circuit-option-btn" data-value="${opt}">${opt} Ω</button>
-    `).join('');
-
+    container.innerHTML = options.map(opt => `<button class="circuit-option-btn" data-value="${opt}">${opt} Ω</button>`).join('');
     document.querySelectorAll('.circuit-option-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.circuit-option-btn').forEach(b => b.classList.remove('selected'));
@@ -372,18 +295,12 @@ function generateCircuitOptions() {
 function checkCircuitAnswer() {
     const selectedBtn = document.querySelector('.circuit-option-btn.selected');
     if (!selectedBtn) return;
-
-    const selectedValue = parseFloat(selectedBtn.dataset.value);
-    const correctAnswer = parseFloat(currentCircuitProblem.answer.toFixed(2));
+    const isCorrect = parseFloat(selectedBtn.dataset.value) === parseFloat(currentCircuitProblem.answer.toFixed(2));
     const resultMsg = document.getElementById('circuit-result-message');
-    const isCorrect = selectedValue === correctAnswer;
-
     resultMsg.textContent = isCorrect ? '正解！' : '不正解...';
     resultMsg.className = isCorrect ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
-    
     document.getElementById('circuit-explanation-text').innerHTML = currentCircuitProblem.explanation;
     document.getElementById('circuit-explanation-container').classList.remove('hidden');
-
     document.getElementById('check-circuit-answer-btn').classList.add('hidden');
     document.getElementById('next-circuit-problem-btn').classList.remove('hidden');
 }
@@ -391,15 +308,12 @@ function checkCircuitAnswer() {
 // --- タイムチャート問題セクション ---
 function setupTimingProblems() {
     document.getElementById('timing-problem-number').textContent = timingProblemNumber;
-    
-    // UIリセット
     document.getElementById('check-timing-answer-btn').classList.remove('hidden');
     document.getElementById('next-timing-problem-btn').classList.add('hidden');
     document.getElementById('timing-result-message').textContent = '';
     document.getElementById('timing-explanation-container').classList.add('hidden');
     timingChartInstances.forEach(chart => chart.destroy());
     timingChartInstances = [];
-
     generateTimingProblem();
     drawTimingProblemCharts();
 }
@@ -407,40 +321,25 @@ function setupTimingProblems() {
 function generateTimingProblem() {
     const gates = ['AND', 'OR', 'NAND', 'NOR', 'XOR'];
     const correctGate = gates[Math.floor(Math.random() * gates.length)];
-    
     const inputA = Array.from({length: 8}, () => Math.round(Math.random()));
     const inputB = Array.from({length: 8}, () => Math.round(Math.random()));
-    const correctAnswer = inputA.map((a, i) => gateInfo[correctGate].truthTable(a, inputB[i]));
-
+    const correctAnswer = inputA.map((a, i) => gateInfo[correctGate].calculate(a, inputB[i]));
     let options = [{ gate: correctGate, waveform: correctAnswer, isCorrect: true }];
     let wrongGates = gates.filter(g => g !== correctGate);
-    
     while (options.length < 4) {
         const wrongGate = wrongGates.splice(Math.floor(Math.random() * wrongGates.length), 1)[0];
-        const wrongAnswer = inputA.map((a, i) => gateInfo[wrongGate].truthTable(a, inputB[i]));
+        const wrongAnswer = inputA.map((a, i) => gateInfo[wrongGate].calculate(a, inputB[i]));
         options.push({ gate: wrongGate, waveform: wrongAnswer, isCorrect: false });
     }
-
     options.sort(() => Math.random() - 0.5);
-
-    currentTimingProblem = {
-        gate: correctGate,
-        inputA,
-        inputB,
-        options,
-        explanation: `このゲートは${correctGate}ゲートです。入力AとBの両方が1のときだけ出力が1になる(AND)、どちらかが1なら1になる(OR)など、各ゲートの真理値表に従って出力が決まります。`
-    };
+    currentTimingProblem = { gate: correctGate, inputA, inputB, options, explanation: `この波形は${gateInfo[correctGate].title}の動作を示します。${gateInfo[correctGate].description}`};
 }
 
 function drawTimingProblemCharts() {
     const { gate, inputA, inputB, options } = currentTimingProblem;
     document.getElementById('timing-problem-gate-type').textContent = gate;
-
-    // 入力チャートの描画
     const inputCtx = document.getElementById('timing-problem-chart-input').getContext('2d');
-    timingChartInstances.push(new Chart(inputCtx, createTimingChartConfig(inputA, inputB)));
-
-    // 選択肢の描画
+    timingChartInstances.push(new Chart(inputCtx, createTimingChartConfig(inputA, inputB, null)));
     const optionsContainer = document.getElementById('timing-options-container');
     optionsContainer.innerHTML = '';
     options.forEach((opt, index) => {
@@ -448,15 +347,10 @@ function drawTimingProblemCharts() {
         const card = document.createElement('div');
         card.className = 'timing-option-card';
         card.dataset.isCorrect = opt.isCorrect;
-        card.innerHTML = `
-            <p class="font-bold text-center mb-2">選択肢 ${index + 1}</p>
-            <div class="chart-container-option"><canvas id="${optionId}"></canvas></div>
-        `;
+        card.innerHTML = `<p class="font-bold text-center mb-2">選択肢 ${index + 1}</p><div class="chart-container-option"><canvas id="${optionId}"></canvas></div>`;
         optionsContainer.appendChild(card);
-        
         const optCtx = document.getElementById(optionId).getContext('2d');
         timingChartInstances.push(new Chart(optCtx, createTimingChartConfig(null, null, opt.waveform)));
-
         card.addEventListener('click', () => {
             document.querySelectorAll('.timing-option-card').forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
@@ -469,38 +363,26 @@ function createTimingChartConfig(dataA, dataB, dataY) {
     if (dataA) datasets.push({ label: '入力A', data: dataA.map(d => d + 2), borderColor: 'rgb(59, 130, 246)', stepped: true });
     if (dataB) datasets.push({ label: '入力B', data: dataB, borderColor: 'rgb(239, 68, 68)', stepped: true });
     if (dataY) datasets.push({ label: '出力Y', data: dataY, borderColor: 'rgb(22, 163, 74)', stepped: true, borderWidth: 3 });
-
     return {
-        type: 'line',
-        data: {
-            labels: Array.from({length: 8}, (_, i) => i),
-            datasets: datasets
-        },
+        type: 'line', data: { labels: Array.from({length: 8}, (_, i) => i), datasets: datasets },
         options: {
             responsive: true, maintainAspectRatio: false,
-            scales: {
-                y: { min: -0.5, max: (dataY ? 1.5 : 3.5), ticks: { display: false }, grid: { color: '#e5e7eb' } },
-                x: { ticks: { display: false }, grid: { display: false } }
-            },
+            scales: { y: { min: -0.5, max: (dataY ? 1.5 : 3.5), ticks: { display: false }, grid: { color: '#e5e7eb' } }, x: { ticks: { display: false }, grid: { display: false } } },
             plugins: { legend: { display: !!(dataA || dataB) } }
         }
     };
 }
 
-
 function checkTimingAnswer() {
     const selected = document.querySelector('.timing-option-card.selected');
     if (!selected) return;
-
     const isCorrect = selected.dataset.isCorrect === 'true';
     const resultMsg = document.getElementById('timing-result-message');
-    
     resultMsg.textContent = isCorrect ? '正解！' : '不正解...';
     resultMsg.className = isCorrect ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
-
     document.getElementById('timing-explanation-text').innerHTML = currentTimingProblem.explanation;
     document.getElementById('timing-explanation-container').classList.remove('hidden');
-
     document.getElementById('check-timing-answer-btn').classList.add('hidden');
     document.getElementById('next-timing-problem-btn').classList.remove('hidden');
 }
+
