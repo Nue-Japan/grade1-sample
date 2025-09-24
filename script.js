@@ -1,433 +1,588 @@
-let bridgeChart;
-let timeChart;
-let currentLogicGate = 'AND';
+// --- グローバル変数定義 ---
+let bridgeChart, timeChart;
+let circuitProblems = [], userCircuitResults = [], currentCircuitProblemIndex = 0, selectedCircuitAnswer = null;
+let timingProblems = [], userTimingResults = [], currentTimingProblemIndex = 0, selectedTimingOption = null, timingOptionCharts = [];
+const TOTAL_PROBLEMS = 30;
 
-// --- 問題用のグローバル変数 ---
-let circuitProblemNumber = 1;
-let currentCircuitProblem = {};
-let timingProblemNumber = 1;
-let currentTimingProblem = {};
-let timingChartInstances = [];
-
-const gateInfo = {
-    'AND':  { title: 'ANDゲート',  description: '入力Aと入力Bが両方とも「1」(HIGH)のときだけ、出力Yが「1」になります。「論理積」とも呼ばれます。',  symbol: 'A・B', calculate: (a, b) => a & b },
-    'OR':   { title: 'ORゲート',   description: '入力Aまたは入力Bのどちらか一方、あるいは両方が「1」のとき、出力Yが「1」になります。「論理和」とも呼ばれます。', symbol: 'A+B', calculate: (a, b) => a | b },
-    'NOT':  { title: 'NOTゲート',  description: '入力を反転させて出力します。入力が「1」なら出力は「0」、入力が「0」なら出力は「1」になります。「否定」とも呼ばれます。', symbol: 'Ā',   calculate: (a, b) => 1 - a },
-    'NAND': { title: 'NANDゲート', description: 'ANDゲートの出力を反転させたものです。入力AとBが両方とも「1」のときだけ、出力が「0」になります。', symbol: 'A・B', calculate: (a, b) => 1 - (a & b) },
-    'NOR':  { title: 'NORゲート',  description: 'ORゲートの出力を反転させたものです。入力AとBが両方とも「0」のときだけ、出力が「1」になります。', symbol: 'A+B', calculate: (a, b) => 1 - (a | b) },
-    'XOR':  { title: 'XORゲート',  description: '入力AとBの値が異なるときだけ、出力が「1」になります。「排他的論理和」とも呼ばれます。', symbol: 'A⊕B', calculate: (a, b) => a ^ b },
-    'XNOR': { title: 'XNORゲート', description: 'XORゲートの出力を反転させたものです。入力AとBの値が同じときだけ、出力が「1」になります。', symbol: 'A⊕B', calculate: (a, b) => 1 - (a ^ b) }
-};
-
-
-// --- 初期化 ---
-document.addEventListener('DOMContentLoaded', () => {
-    showSection('home');
-    
-    // 電気回路
-    calculateShunt();
-    calculateMultiplier();
-    setupBridge();
-    
-    // デジタル基礎
-    setupConverter();
-    
-    // 論理回路
-    selectLogicGate('AND');
-    document.getElementById('gate-input-a')?.addEventListener('change', updateGateOutput);
-    document.getElementById('gate-input-b')?.addEventListener('change', updateGateOutput);
-    setupTimeChart();
-
-    // 回路問題
-    setupCircuitProblems();
-    document.getElementById('check-circuit-answer-btn').addEventListener('click', checkCircuitAnswer);
-    document.getElementById('next-circuit-problem-btn').addEventListener('click', () => { circuitProblemNumber++; setupCircuitProblems(); });
-
-    // タイムチャート問題
-    setupTimingProblems();
-    document.getElementById('check-timing-answer-btn').addEventListener('click', checkTimingAnswer);
-    document.getElementById('next-timing-problem-btn').addEventListener('click', () => { timingProblemNumber++; setupTimingProblems(); });
+// --- データ定義 ---
+const circuitProblemBank = [
+    { type: 'series', resistors: [10, 20], correctAnswer: 30, explanation: '直列接続なので、単純に抵抗値を足し合わせます。R = R1 + R2 = 10Ω + 20Ω = 30Ω となります。' },
+    { type: 'parallel', resistors: [10, 10], correctAnswer: 5, explanation: '並列接続の合成抵抗は「和分の積」で計算できます。R = (R1 * R2) / (R1 + R2) = (10 * 10) / (10 + 10) = 100 / 20 = 5Ω となります。' },
+    { type: 'series-parallel', resistors: [10, 10, 10], correctAnswer: 15, explanation: 'まず並列部分(R2, R3)を計算します。(10 * 10) / (10 + 10) = 5Ω。次に直列のR1を足します。10Ω + 5Ω = 15Ω。' },
+    { type: 'complex1', resistors: [30, 60, 10], correctAnswer: 30, explanation: '並列部分(R1, R2)は (30 * 60) / (30 + 60) = 20Ω。これと直列のR3を足し、20Ω + 10Ω = 30Ω。' },
+    { type: 'complex2', resistors: [5, 60, 30, 20], correctAnswer: 15, explanation: '3つの並列部分は 1 / (1/60 + 1/30 + 1/20) = 10Ω。これと直列のR1を足し、5Ω + 10Ω = 15Ω。' },
+    { type: 'complex3', resistors: [10, 20, 30], correctAnswer: 15, explanation: '直列部分(R1, R2)は 10 + 20 = 30Ω。これと並列のR3との合成抵抗は (30 * 30) / (30 + 30) = 15Ω。' },
+    { type: 'complex4', resistors: [10, 20, 20, 40], correctAnswer: 30, explanation: '内側の直列(R2, R3)は 40Ω。R4との並列で (40*40)/(40+40) = 20Ω。最後にR1と直列で 10Ω+20Ω = 30Ω。' },
+    { type: 'series', resistors: [100, 150], correctAnswer: 250, explanation: '直列接続: R = R1 + R2 = 100Ω + 150Ω = 250Ω。' },
+    { type: 'parallel', resistors: [20, 30], correctAnswer: 12, explanation: '並列接続: R = (20 * 30) / (20 + 30) = 600 / 50 = 12Ω。' },
+    { type: 'series-parallel', resistors: [5, 20, 20], correctAnswer: 15, explanation: '並列部分(R2, R3)は (20*20)/(20+20) = 10Ω。直列のR1を足し 5Ω+10Ω=15Ω。' },
+    { type: 'complex1', resistors: [10, 40, 22], correctAnswer: 30, explanation: '並列部分(R1, R2)は(10*40)/(10+40)=8Ω。直列のR3を足し 8Ω+22Ω=30Ω。' },
+    { type: 'complex3', resistors: [5, 15, 20], correctAnswer: 10, explanation: '直列部分(R1, R2)は 5+15=20Ω。R3との並列で (20*20)/(20+20)=10Ω。' },
+    { type: 'series', resistors: [47, 33], correctAnswer: 80, explanation: '直列接続: R = 47Ω + 33Ω = 80Ω。' },
+    { type: 'parallel', resistors: [100, 100, 100], correctAnswer: 33.3, explanation: '3つの並列接続: 1 / (1/100 + 1/100 + 1/100) = 100/3 ≈ 33.3Ω。' },
+    { type: 'complex4', resistors: [20, 10, 10, 20], correctAnswer: 30, explanation: '内側直列(R2,R3)は20Ω。R4との並列で(20*20)/(20+20)=10Ω。外側R1と直列で20+10=30Ω。' },
+    { type: 'series-parallel', resistors: [18, 30, 60], correctAnswer: 38, explanation: '並列部分(R2,R3)は(30*60)/(30+60)=20Ω。直列R1を足し 18Ω+20Ω=38Ω。' },
+    { type: 'complex1', resistors: [6, 3, 18], correctAnswer: 20, explanation: '並列部分(R1,R2)は(6*3)/(6+3)=2Ω。直列R3を足し 2Ω+18Ω=20Ω。' },
+    { type: 'parallel', resistors: [8, 12], correctAnswer: 4.8, explanation: '並列接続: R = (8 * 12) / (8 + 12) = 96 / 20 = 4.8Ω。' },
+    { type: 'complex2', resistors: [10, 10, 20, 20], correctAnswer: 15, explanation: '3つの並列部分は1/(1/10+1/20+1/20)=5Ω。直列R1を足し 10Ω+5Ω=15Ω。' },
+    { type: 'series', resistors: [220, 470], correctAnswer: 690, explanation: '直列接続: R = 220Ω + 470Ω = 690Ω。' },
+    { type: 'complex3', resistors: [12, 18, 15], correctAnswer: 10, explanation: '直列部分(R1,R2)は12+18=30Ω。R3との並列で(30*15)/(30+15)=10Ω。' },
+    { type: 'series-parallel', resistors: [50, 100, 100], correctAnswer: 100, explanation: '並列部分(R2,R3)は(100*100)/(100+100)=50Ω。直列R1を足し 50Ω+50Ω=100Ω。' },
+    { type: 'parallel', resistors: [2.2, 2.2], correctAnswer: 1.1, explanation: '並列接続: R = (2.2 * 2.2) / (2.2 + 2.2) = 1.1Ω。' },
+    { type: 'complex4', resistors: [5, 5, 5, 10], correctAnswer: 10, explanation: '内側直列(R2,R3)は10Ω。R4との並列で(10*10)/(10+10)=5Ω。外側R1と直列で5+5=10Ω。' },
+    { type: 'complex1', resistors: [180, 90, 40], correctAnswer: 100, explanation: '並列部分(R1,R2)は(180*90)/(180+90)=60Ω。直列R3を足し 60Ω+40Ω=100Ω。' },
+    { type: 'series', resistors: [1000, 2200], correctAnswer: 3200, explanation: '直列接続: R = 1kΩ + 2.2kΩ = 3.2kΩ = 3200Ω。' },
+    { type: 'complex2', resistors: [30, 60, 60, 60], correctAnswer: 50, explanation: '3つの並列部分は1/(1/60+1/60+1/60)=20Ω。直列R1を足し 30Ω+20Ω=50Ω。' },
+    { type: 'parallel', resistors: [470, 470], correctAnswer: 235, explanation: '並列接続: R = (470 * 470) / (470 + 470) = 235Ω。' },
+    { type: 'series-parallel', resistors: [7, 10, 15], correctAnswer: 13, explanation: '並列部分(R2,R3)は(10*15)/(10+15)=6Ω。直列R1を足し 7Ω+6Ω=13Ω。' },
+    { type: 'complex3', resistors: [25, 25, 50], correctAnswer: 25, explanation: '直列部分(R1,R2)は25+25=50Ω。R3との並列で(50*50)/(50+50)=25Ω。' }
+].map(p => {
+    if (p.correctAnswer % 1 !== 0) {
+        p.correctAnswer = parseFloat(p.correctAnswer.toFixed(1));
+    }
+    return p;
 });
 
-// --- ページナビゲーション ---
-function showSection(sectionId) {
-    document.querySelectorAll('.content-section').forEach(section => {
-        section.classList.toggle('active', section.id === `section-${sectionId}`);
-    });
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.section === sectionId);
-    });
+const timingProblemBank = [
+    { gate: 'AND',  inputA: [0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0], inputB: [0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1] },
+    { gate: 'OR',   inputA: [0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0], inputB: [1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0] },
+    { gate: 'XOR',  inputA: [1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1], inputB: [1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1] },
+    { gate: 'NAND', inputA: [1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1], inputB: (a => a.map(bit => 1 - bit))([1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1]) },
+    { gate: 'NOT',  inputA: [0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1], inputB: null },
+    { gate: 'XNOR', inputA: [0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0], inputB: [0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1] },
+    { gate: 'NOR',  inputA: [1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1], inputB: (a => a.map(bit => 1 - bit))([1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1]) },
+    ...Array.from({ length: 23 }).map(() => {
+        const gates = ['AND', 'OR', 'XOR', 'NAND', 'NOT', 'XNOR', 'NOR'];
+        const gate = gates[Math.floor(Math.random() * gates.length)];
+        const len = 16;
+        const inputA = Array.from({ length: len }, () => Math.round(Math.random()));
+        let inputB = null;
+        if (gate !== 'NOT') {
+            inputB = Array.from({ length: len }, () => Math.round(Math.random()));
+        }
+        return { gate, inputA, inputB };
+    })
+];
+
+const gateInfo = {
+    'AND': { description: '入力Aと入力Bが両方とも「1」のときだけ、出力Yが「1」になります。', truthTable: [[0,0,0],[0,1,0],[1,0,0],[1,1,1]]}, 'OR': { description: '入力Aまたは入力Bのどちらか一方、あるいは両方が「1」のとき、出力Yが「1」になります。', truthTable: [[0,0,0],[0,1,1],[1,0,1],[1,1,1]]}, 'NOT': { description: '入力を反転させて出力します。入力が「1」なら「0」に、「0」なら「1」になります。', truthTable: [[0,1],[1,0]]}, 'NAND': { description: 'ANDゲートの出力を反転させたものです。入力AとBが両方とも「1」のときだけ「0」になり、それ以外は「1」になります。', truthTable: [[0,0,1],[0,1,1],[1,0,1],[1,1,0]]}, 'NOR': { description: 'ORゲートの出力を反転させたものです。入力AとBが両方とも「0」のときだけ「1」になり、それ以外は「0」になります。', truthTable: [[0,0,1],[0,1,0],[1,0,0],[1,1,0]]}, 'XOR': { description: '入力AとBの値が異なるときだけ、出力が「1」になります。(排他的論理和)', truthTable: [[0,0,0],[0,1,1],[1,0,1],[1,1,0]]}, 'XNOR': { description: '入力AとBの値が同じときだけ、出力が「1」になります。(XORの反転)', truthTable: [[0,0,1],[0,1,0],[1,0,0],[1,1,1]]}
+};
+
+// --- ナビゲーションとUI制御 ---
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('hidden');
 }
 
-function switchMeter(meterType) {
-    const isShunt = meterType === 'shunt';
-    document.getElementById('shunt-calc').classList.toggle('hidden', !isShunt);
-    document.getElementById('subtab-shunt').classList.toggle('active', isShunt);
-    document.getElementById('multiplier-calc').classList.toggle('hidden', isShunt);
-    document.getElementById('subtab-multiplier').classList.toggle('active', !isShunt);
+function showSection(sectionId, element) {
+    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+    document.getElementById(`section-${sectionId}`).classList.add('active');
+    
+    document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+    element.classList.add('active');
+    
+    if (window.innerWidth < 1024) {
+        toggleSidebar();
+    }
+    window.scrollTo(0, 0);
 }
+
+function switchSubTab(subTabId) {
+    document.querySelectorAll('.sub-section').forEach(s => s.classList.remove('active'));
+    document.getElementById(`${subTabId}-calc`).classList.add('active');
+    document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(`subtab-${subTabId}`).classList.add('active');
+}
+
+// --- Gemini提案機能：Toast Notification ---
+function showToast(message, isSuccess) {
+    const toast = document.getElementById('toast-notification');
+    toast.textContent = message;
+    toast.className = 'toast show';
+    toast.classList.add(isSuccess ? 'success' : 'error');
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// --- Gemini提案機能：Confetti ---
+function startConfetti() {
+    const canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const confettiPieces = [];
+    const pieceCount = 200;
+    const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
+
+    for (let i = 0; i < pieceCount; i++) {
+        confettiPieces.push({
+            x: Math.random() * canvas.width,
+            y: -Math.random() * canvas.height,
+            radius: Math.random() * 5 + 2,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            speed: Math.random() * 3 + 2,
+            tilt: Math.random() * 10,
+            tiltAngle: Math.random() * Math.PI * 2
+        });
+    }
+
+    let animationFrame;
+    function update() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        confettiPieces.forEach(p => {
+            p.y += p.speed;
+            p.tiltAngle += 0.05;
+            p.x += Math.sin(p.tiltAngle + p.x/100);
+            if (p.y > canvas.height) {
+                p.x = Math.random() * canvas.width;
+                p.y = -20;
+            }
+            ctx.beginPath();
+            ctx.lineWidth = p.radius;
+            ctx.strokeStyle = p.color;
+            ctx.moveTo(p.x + p.tilt, p.y);
+            ctx.lineTo(p.x, p.y + p.tilt + p.radius);
+            ctx.stroke();
+        });
+        animationFrame = requestAnimationFrame(update);
+    }
+    
+    update();
+    setTimeout(() => {
+        cancelAnimationFrame(animationFrame);
+        if (ctx) {
+             ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }, 5000);
+}
+
 
 // --- 電気回路セクション ---
 function calculateShunt() {
     const ra = parseFloat(document.getElementById('shunt-ra').value);
     const n = parseFloat(document.getElementById('shunt-n').value);
     const resultEl = document.getElementById('shunt-result');
-    if (isNaN(ra) || isNaN(n) || n <= 1) { resultEl.textContent = '無効な入力です'; return; }
-    const rs = ra / (n - 1);
-    resultEl.innerHTML = `Rs = <span class="text-2xl">${rs.toFixed(2)}</span> Ω`;
+    if (!isNaN(ra) && !isNaN(n) && n > 1) {
+        resultEl.textContent = `分流器の抵抗 (Rs) = ${(ra / (n - 1)).toFixed(3)} Ω`;
+    } else {
+        resultEl.textContent = '有効な値を入力してください (倍率は1より大きい値)。';
+    }
 }
-
 function calculateMultiplier() {
-    const rv = parseFloat(document.getElementById('multiplier-rv').value);
+    const ra = parseFloat(document.getElementById('multiplier-ra').value);
     const n = parseFloat(document.getElementById('multiplier-n').value);
     const resultEl = document.getElementById('multiplier-result');
-    if (isNaN(rv) || isNaN(n) || n <= 1) { resultEl.textContent = '無効な入力です'; return; }
-    const rm = rv * (n - 1);
-    resultEl.innerHTML = `Rm = <span class="text-2xl">${rm.toFixed(2)}</span> kΩ`;
-}
-
-function setupBridge() {
-    const inputs = ['bridge-r1', 'bridge-r2', 'bridge-r3', 'bridge-rx-slider'].map(id => document.getElementById(id));
-    const updateBridge = () => {
-        const r1 = parseFloat(inputs[0].value) || 0;
-        const r2 = parseFloat(inputs[1].value) || 0;
-        const r3 = parseFloat(inputs[2].value) || 0;
-        const userRx = parseFloat(inputs[3].value) || 0;
-        
-        document.getElementById('bridge-rx-value').textContent = userRx.toFixed(2);
-        let idealRx = (r1 > 0) ? (r2 * r3) / r1 : 0;
-        document.getElementById('bridge-ideal-rx').textContent = idealRx.toFixed(2) + ' Ω';
-        let unbalance = (idealRx > 0) ? ((userRx - idealRx) / idealRx * 100) : (userRx > 0 ? 100 : 0);
-        renderBridgeChart(unbalance);
-    };
-    inputs.forEach(el => el.addEventListener('input', updateBridge));
-    updateBridge();
-}
-
-function renderBridgeChart(unbalance) {
-    const ctx = document.getElementById('bridgeChart')?.getContext('2d');
-    if (!ctx) return;
-    if (!bridgeChart) {
-        bridgeChart = new Chart(ctx, {
-            type: 'bar', data: { labels: ['検流計の振れ'], datasets: [{ label: '不平衡度 (%)', data: [0], backgroundColor: ['#ef4444'], borderWidth: 1 }] },
-            options: { indexAxis: 'y', scales: { x: { min: -100, max: 100, title: { display: true, text: '不平衡度 (%)' } } }, responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
-        });
+     if (!isNaN(ra) && !isNaN(n) && n > 1) {
+        resultEl.textContent = `倍率器の抵抗 (Rm) = ${(ra * (n - 1)).toFixed(3)} Ω`;
+    } else {
+        resultEl.textContent = '有効な値を入力してください (倍率は1より大きい値)。';
     }
-    bridgeChart.data.datasets[0].data[0] = unbalance;
-    bridgeChart.data.datasets[0].backgroundColor[0] = Math.abs(unbalance) < 1 ? '#22c55e' : '#3b82f6';
+}
+function calculateBridge() {
+    const r1 = parseFloat(document.getElementById('bridge-r1').value);
+    const r2 = parseFloat(document.getElementById('bridge-r2').value);
+    const r3 = parseFloat(document.getElementById('bridge-r3').value);
+    const resultEl = document.getElementById('bridge-result');
+    if (!isNaN(r1) && !isNaN(r2) && !isNaN(r3) && r1 > 0) {
+        const rx = (r2 * r3) / r1;
+        resultEl.textContent = `未知の抵抗 (Rx) = ${rx.toFixed(3)} Ω`;
+        updateBridgeChart(r1, r2, r3, rx);
+    } else {
+        resultEl.textContent = 'R1, R2, R3に有効な正の値を入力してください。';
+    }
+}
+function updateBridgeChart(r1, r2, r3, rx) {
+    if (!bridgeChart) return;
+    bridgeChart.data.datasets[0].data = [r1, r2, r3, rx];
     bridgeChart.update();
 }
 
 // --- デジタル基礎セクション ---
-function setupConverter() {
-    const inputs = { dec: document.getElementById('conv-dec'), bin: document.getElementById('conv-bin'), hex: document.getElementById('conv-hex') };
-    Object.keys(inputs).forEach(key => {
-        inputs[key]?.addEventListener('input', () => {
-            let val;
-            const sourceElem = inputs[key];
-            if (sourceElem.value === '') { inputs.dec.value = ''; inputs.bin.value = ''; inputs.hex.value = ''; return; }
-            try {
-                switch (key) {
-                    case 'dec': val = parseInt(sourceElem.value, 10); break;
-                    case 'bin': val = parseInt(sourceElem.value.replace(/[^01]/g, ''), 2); break;
-                    case 'hex': val = parseInt(sourceElem.value.replace(/[^0-9A-Fa-f]/g, ''), 16); break;
-                }
-                if (!isNaN(val)) {
-                    if (key !== 'dec') inputs.dec.value = val;
-                    if (key !== 'bin') inputs.bin.value = val.toString(2);
-                    if (key !== 'hex') inputs.hex.value = val.toString(16).toUpperCase();
-                }
-            } catch (e) { /* ignore errors */ }
-        });
-    });
+function convertBase(from) {
+    const decIn = document.getElementById('dec-input'), binIn = document.getElementById('bin-input'), hexIn = document.getElementById('hex-input');
+    let val;
+    if (from === 'dec') val = parseInt(decIn.value, 10);
+    if (from === 'bin') val = parseInt(binIn.value, 2);
+    if (from === 'hex') val = parseInt(hexIn.value, 16);
+    if (isNaN(val) || val < 0) { decIn.value = binIn.value = hexIn.value = ''; return; }
+    if (from !== 'dec') decIn.value = val;
+    if (from !== 'bin') binIn.value = val.toString(2);
+    if (from !== 'hex') hexIn.value = val.toString(16).toUpperCase();
 }
 
 // --- 論理回路セクション ---
-function selectLogicGate(gate) {
-    currentLogicGate = gate;
-    const info = gateInfo[gate];
-    document.querySelectorAll('.logic-gate-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === gate));
-    
-    document.getElementById('gate-title').textContent = info.title;
-    document.getElementById('gate-description').textContent = info.description;
-    document.getElementById('gate-symbol').textContent = info.symbol;
-    document.getElementById('gate-input-b-container').style.display = gate === 'NOT' ? 'none' : '';
-
-    renderTruthTable(gate);
-    updateGateOutput();
-    renderTimeChart(gate);
+function switchGate(gate) {
+    document.querySelectorAll('.logic-gate-btn').forEach(b => b.classList.toggle('active', b.textContent === gate));
+    document.getElementById('gate-title').textContent = `${gate}ゲート`;
+    document.getElementById('gate-description').textContent = gateInfo[gate].description;
+    updateTruthTable(gate);
+    updateTimeChart(gate);
 }
 
-function updateGateOutput() {
-    const inputA = document.getElementById('gate-input-a').checked;
-    const inputB = document.getElementById('gate-input-b').checked;
-    const outputEl = document.getElementById('gate-output');
-    let outputVal = gateInfo[currentLogicGate].calculate(Number(inputA), Number(inputB));
-    
-    outputEl.textContent = outputVal;
-    outputEl.classList.toggle('high', outputVal === 1);
+function updateTruthTable(gate) {
+    const table = document.getElementById('truth-table');
+    table.innerHTML = '';
+    const isNot = gate === 'NOT';
+    const header = `<thead><tr><th>入力A</th>${!isNot ? '<th>入力B</th>' : ''}<th>出力Y</th></tr></thead>`;
+    table.innerHTML = header;
+    const tbody = document.createElement('tbody');
+    gateInfo[gate].truthTable.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = row.map(cell => `<td>${cell}</td>`).join('');
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
 }
 
-function renderTruthTable(gate) {
-    const tableEl = document.getElementById('truth-table');
-    let headers, rows;
-    if (gate === 'NOT') {
-        headers = ['A', 'Y'];
-        rows = [[0, 1], [1, 0]];
-    } else {
-        headers = ['A', 'B', 'Y'];
-        rows = [
-            [0, 0, gateInfo[gate].calculate(0, 0)], [0, 1, gateInfo[gate].calculate(0, 1)],
-            [1, 0, gateInfo[gate].calculate(1, 0)], [1, 1, gateInfo[gate].calculate(1, 1)]
-        ];
+function updateTimeChart(gate) {
+    if (!timeChart) return;
+    const inputA = [0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0];
+    const inputB = [0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0];
+    const outputY = calculateGateOutput(gate, inputA, inputB);
+    
+    const datasets = [];
+    datasets.push({ label: '入力A', data: inputA, borderColor: '#38bdf8', stepped: true, pointRadius: 0, borderWidth: 2 });
+    if (gate !== 'NOT') {
+        datasets.push({ label: '入力B', data: inputB, borderColor: '#f472b6', stepped: true, pointRadius: 0, borderWidth: 2 });
     }
-    tableEl.innerHTML = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-                         <tbody>${rows.map(r => `<tr>${r.map(d => `<td>${d}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    datasets.push({ label: '出力Y', data: outputY, borderColor: '#34d399', stepped: true, pointRadius: 0, borderWidth: 3 });
+
+    timeChart.data.labels = Array.from({length: inputA.length}, (_, i) => i);
+    timeChart.data.datasets = datasets;
+    timeChart.update();
 }
 
-function setupTimeChart() {
-    const ctx = document.getElementById('timeChart')?.getContext('2d');
-    if (!ctx) return;
-    timeChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: Array.from({length: 8}, (_, i) => i),
-            datasets: [
-                { label: '入力A', data: [], borderColor: 'rgb(59, 130, 246)', stepped: true, yAxisID: 'y' },
-                { label: '入力B', data: [], borderColor: 'rgb(239, 68, 68)', stepped: true, yAxisID: 'y1' },
-                { label: '出力Y', data: [], borderColor: 'rgb(22, 163, 74)', stepped: true, borderWidth: 3, yAxisID: 'y2' }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-                y: { min: -0.2, max: 1.2, display: false }, y1: { min: 1.8, max: 3.2, display: false },
-                y2: { min: 3.8, max: 5.2, display: false }, x: { ticks: { display: false }, grid: { drawOnChartArea: false } }
-            },
-             plugins: { legend: { position: 'right' } }
+// --- 問題解答汎用ロジック ---
+function calculateGateOutput(gate, inputA, inputB) {
+    return inputA.map((a, i) => {
+        const b = (inputB && inputB[i] !== undefined) ? inputB[i] : 0;
+        switch (gate) {
+            case 'AND':  return a & b; case 'OR':   return a | b;
+            case 'NOT':  return 1 - a; case 'NAND': return 1 - (a & b);
+            case 'NOR':  return 1 - (a | b); case 'XOR':  return a ^ b;
+            case 'XNOR': return 1 - (a ^ b); default: return 0;
         }
     });
 }
 
-function renderTimeChart(gate) {
-    if (!timeChart) return;
-    const inputA = [0, 0, 1, 1, 0, 1, 0, 1];
-    const inputB = [0, 1, 0, 1, 1, 0, 1, 0];
-    let outputY = inputA.map((a, i) => gateInfo[gate].calculate(a, inputB[i]));
-    
-    timeChart.data.datasets[0].data = inputA;
-    timeChart.data.datasets[1].data = inputB.map(b => b + 2);
-    timeChart.data.datasets[1].hidden = (gate === 'NOT');
-    timeChart.data.datasets[2].data = outputY.map(y => y + 4);
-    timeChart.update();
-}
-
-
 // --- 回路問題セクション ---
 function setupCircuitProblems() {
-    document.getElementById('circuit-problem-number').textContent = circuitProblemNumber;
+    circuitProblems = [...circuitProblemBank].sort(() => Math.random() - 0.5).slice(0, TOTAL_PROBLEMS);
+    userCircuitResults = new Array(circuitProblems.length).fill(null);
+    loadCircuitProblem(0);
+    updateCircuitResultsPanel();
+}
+function resetCircuitProblems() {
+    setupCircuitProblems();
+    showToast("回路問題をリセットしました！", true);
+}
+
+
+function loadCircuitProblem(index, isReview = false) {
+    currentCircuitProblemIndex = index;
+    const problem = circuitProblems[index];
+    selectedCircuitAnswer = null;
+    document.getElementById('circuit-problem-number').textContent = index + 1;
+    drawCircuitDiagram(problem);
+
+    const optionsContainer = document.getElementById('circuit-options-container');
+    optionsContainer.innerHTML = '';
+    generateCircuitOptions(problem.correctAnswer).forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = `${opt} Ω`;
+        btn.onclick = () => selectCircuitOption(btn, opt);
+        optionsContainer.appendChild(btn);
+    });
+    
+    document.getElementById('circuit-explanation-container').classList.add('hidden');
     document.getElementById('check-circuit-answer-btn').classList.remove('hidden');
     document.getElementById('next-circuit-problem-btn').classList.add('hidden');
-    document.getElementById('circuit-result-message').textContent = '';
-    document.getElementById('circuit-explanation-container').classList.add('hidden');
-    generateCircuitProblem();
-    drawCircuitDiagram();
-    generateCircuitOptions();
-}
 
-function generateCircuitProblem() {
-    const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-    const type = randInt(0, 2);
-    const r1 = randInt(1, 10) * 10; const r2 = randInt(1, 10) * 10;
-    let r3, answer, explanation, resistors;
-    switch (type) {
-        case 0: // 直列
-            answer = r1 + r2;
-            explanation = `直列接続なので、単純に抵抗値を足し合わせます。<br>R = R1 + R2 = ${r1} + ${r2} = ${answer} Ω`;
-            resistors = { type: 'series', r1, r2 };
-            break;
-        case 1: // 並列
-            answer = (r1 * r2) / (r1 + r2);
-            explanation = `並列接続の合成抵抗は「和分の積」で求めます。<br>R = (R1 * R2) / (R1 + R2) = (${r1} * ${r2}) / (${r1} + ${r2}) = ${answer.toFixed(2)} Ω`;
-            resistors = { type: 'parallel', r1, r2 };
-            break;
-        case 2: // 直並列
-            r3 = randInt(1, 10) * 10; const r23_parallel = (r2 * r3) / (r2 + r3);
-            answer = r1 + r23_parallel;
-            explanation = `まずR2とR3の並列部分を計算します。<br>R23 = (R2 * R3) / (R2 + R3) = (${r2} * ${r3}) / (${r2} + ${r3}) = ${r23_parallel.toFixed(2)} Ω<br>次に、R1と直列接続なので足し合わせます。<br>R = R1 + R23 = ${r1} + ${r23_parallel.toFixed(2)} = ${answer.toFixed(2)} Ω`;
-            resistors = { type: 'series-parallel', r1, r2, r3 };
-            break;
+    const result = userCircuitResults[index];
+    if (isReview && result) {
+        selectedCircuitAnswer = result.selected;
+        checkCircuitAnswer(true);
     }
-    currentCircuitProblem = { resistors, answer, explanation };
 }
 
-function drawCircuitDiagram() {
+function drawCircuitDiagram(problem) {
     const container = document.getElementById('circuit-diagram-problem');
-    const { type, r1, r2, r3 } = currentCircuitProblem.resistors;
-    // フォントサイズを大きくし、見やすいフォントファミリーを指定
-    const resistorSVG = (x, y, val, vert = false) => `<g ${vert?`transform="rotate(90 ${x} ${y})"`:''}><path d="M ${x} ${y} h 20 l 5 -10 l 10 20 l 10 -20 l 10 20 l 5 -10 h 20" stroke="black" fill="none" stroke-width="2"/><text ${vert?`x="${x+15}" y="${y+5}"`:`x="${x+40}" y="${y-5}"`} font-size="16" font-family="sans-serif">${val}Ω</text></g>`;
-    let svg = '';
-    let viewBoxWidth = 320;
+    let html = 'A -- ';
+    const r = problem.resistors;
+    switch (problem.type) {
+        case 'series': html += `[R1:${r[0]}Ω]--[R2:${r[1]}Ω]`; break;
+        case 'parallel': html += `<div class="inline-block text-center align-middle">[R1:${r[0]}Ω]<br>|<br>[R2:${r[1]}Ω]</div>`; break;
+        case 'series-parallel': html += `[R1:${r[0]}Ω]--<div class="inline-block text-center align-middle">[R2:${r[1]}Ω]<br>|<br>[R3:${r[2]}Ω]</div>`; break;
+        case 'complex1': html += `<div class="inline-block text-center align-middle">[R1:${r[0]}Ω]<br>|<br>[R2:${r[1]}Ω]</div>--[R3:${r[2]}Ω]`; break;
+        case 'complex2': html += `[R1:${r[0]}Ω]--<div class="inline-block text-center align-middle">[R2:${r[1]}Ω]<br>|<br>[R3:${r[2]}Ω]<br>|<br>[R4:${r[3]}Ω]</div>`; break;
+        case 'complex3': html += `<div class="inline-block text-center align-middle">[R1:${r[0]}Ω]--[R2:${r[1]}Ω]<br>|<br>[R3:${r[2]}Ω]</div>`; break;
+        case 'complex4': html += `[R1:${r[0]}Ω]--<div class="inline-block text-center align-middle">[R2:${r[1]}Ω]--[R3:${r[2]}Ω]<br>|<br>[R4:${r[3]}Ω]</div>`; break;
+    }
+    container.innerHTML = html + ' -- B';
+}
+
+function generateCircuitOptions(correct) {
+    let opts = new Set([correct]);
+    while (opts.size < 4) {
+        const factor = Math.random() < 0.5 ? 0.6 + Math.random() * 0.3 : 1.1 + Math.random() * 0.5;
+        let randOpt = correct * factor + (Math.random() * 10 - 5);
+        if (randOpt !== correct && randOpt > 0) {
+            if (randOpt % 1 !== 0) {
+                opts.add(parseFloat(randOpt.toFixed(1)));
+            } else {
+                opts.add(Math.round(randOpt));
+            }
+        }
+    }
+    return Array.from(opts).sort((a, b) => a - b);
+}
+
+function selectCircuitOption(btn, answer) {
+    if (userCircuitResults[currentCircuitProblemIndex] !== null) return;
+    document.querySelectorAll('#circuit-options-container .option-btn.selected').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedCircuitAnswer = answer;
+}
+
+function checkCircuitAnswer(isReview) {
+    if (selectedCircuitAnswer === null && !isReview) return;
+    const problem = circuitProblems[currentCircuitProblemIndex];
+    const isCorrect = selectedCircuitAnswer === problem.correctAnswer;
     
-    switch (type) {
-        case 'series': 
-            svg=`<circle cx="10" cy="50" r="5" fill="black"/><text x="5" y="40">A</text>
-                 <line x1="10" y1="50" x2="50" y2="50" stroke="black" stroke-width="2"/>
-                 ${resistorSVG(50,50,r1)}
-                 ${resistorSVG(150,50,r2)}
-                 <line x1="250" y1="50" x2="290" y2="50" stroke="black" stroke-width="2"/>
-                 <circle cx="290" cy="50" r="5" fill="black"/><text x="285" y="40">B</text>`; 
-            break;
-        case 'parallel': 
-            viewBoxWidth = 260;
-            svg=`<circle cx="10" cy="50" r="5" fill="black"/><text x="5" y="40">A</text>
-                 <path d="M 10 50 H 30 V 20 H 50" stroke="black" fill="none" stroke-width="2"/>
-                 <path d="M 150 20 H 170 V 50 H 190" stroke="black" fill="none" stroke-width="2"/>
-                 ${resistorSVG(50,20,r1)}
-                 
-                 <path d="M 30 50 V 80 H 50" stroke="black" fill="none" stroke-width="2"/>
-                 <path d="M 150 80 H 170 V 50" stroke="black" fill="none" stroke-width="2"/>
-                 ${resistorSVG(50,80,r2)}
-                 <circle cx="190" cy="50" r="5" fill="black"/><text x="185" y="40">B</text>`;
-            break;
-        case 'series-parallel':
-            viewBoxWidth = 360;
-            svg = `
-                <circle cx="10" cy="75" r="5" fill="black"/><text x="5" y="65">A</text>
-                <rect x="155" y="25" width="150" height="100" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4"/>
-                <text x="195" y="20" font-size="12" fill="#64748b">並列部分</text>
-
-                <line x1="10" y1="75" x2="30" y2="75" stroke="black" stroke-width="2"/>
-                ${resistorSVG(30, 75, r1)}
-                <line x1="130" y1="75" x2="160" y2="75" stroke="black" stroke-width="2"/>
-                
-                <path d="M 160 75 V 40 H 180" stroke="black" fill="none" stroke-width="2"/>
-                ${resistorSVG(180, 40, r2)}
-                <path d="M 280 40 H 300 V 75" stroke="black" fill="none" stroke-width="2"/>
-                
-                <path d="M 160 75 V 110 H 180" stroke="black" fill="none" stroke-width="2"/>
-                ${resistorSVG(180, 110, r3)}
-                <path d="M 280 110 H 300 V 75" stroke="black" fill="none" stroke-width="2"/>
-
-                <line x1="300" y1="75" x2="330" y2="75" stroke="black" stroke-width="2"/>
-                <circle cx="330" cy="75" r="5" fill="black"/><text x="325" y="65">B</text>
-            `;
-            break;
+    if (!isReview) {
+        userCircuitResults[currentCircuitProblemIndex] = { selected: selectedCircuitAnswer, correct: isCorrect };
+        updateCircuitResultsPanel();
+        showToast(isCorrect ? "正解です！" : "不正解です...", isCorrect);
+        if (userCircuitResults.filter(r => r !== null).length === circuitProblems.length) {
+            startConfetti();
+        }
     }
-    container.innerHTML = `<svg viewBox="0 0 ${viewBoxWidth} 150" width="${viewBoxWidth}" height="150" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
-}
-
-function generateCircuitOptions() {
-    const container = document.getElementById('circuit-options-container');
-    const { answer } = currentCircuitProblem;
-    let options = [parseFloat(answer.toFixed(2))];
-    while (options.length < 4) {
-        let wrongAnswer = parseFloat((answer * (Math.random() * 1.5 + 0.5)).toFixed(2));
-        if (!options.includes(wrongAnswer) && wrongAnswer > 0) options.push(wrongAnswer);
-    }
-    options.sort(() => Math.random() - 0.5);
-    container.innerHTML = options.map(opt => `<button class="circuit-option-btn" data-value="${opt}">${opt} Ω</button>`).join('');
-    document.querySelectorAll('.circuit-option-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.circuit-option-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-        });
+    
+    document.querySelectorAll('#circuit-options-container .option-btn').forEach(btn => {
+        const answer = parseFloat(btn.textContent);
+        btn.classList.add('disabled');
+        if (answer === problem.correctAnswer) btn.classList.add('correct');
+        else if (answer === selectedCircuitAnswer) btn.classList.add('incorrect');
     });
-}
 
-function checkCircuitAnswer() {
-    const selectedBtn = document.querySelector('.circuit-option-btn.selected');
-    if (!selectedBtn) return;
-    const isCorrect = parseFloat(selectedBtn.dataset.value) === parseFloat(currentCircuitProblem.answer.toFixed(2));
-    const resultMsg = document.getElementById('circuit-result-message');
-    resultMsg.textContent = isCorrect ? '正解！' : '不正解...';
-    resultMsg.className = isCorrect ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
-    document.getElementById('circuit-explanation-text').innerHTML = currentCircuitProblem.explanation;
+    document.getElementById('circuit-explanation-text').textContent = problem.explanation;
     document.getElementById('circuit-explanation-container').classList.remove('hidden');
     document.getElementById('check-circuit-answer-btn').classList.add('hidden');
     document.getElementById('next-circuit-problem-btn').classList.remove('hidden');
 }
 
-// --- タイムチャート問題セクション ---
-function setupTimingProblems() {
-    document.getElementById('timing-problem-number').textContent = timingProblemNumber;
-    document.getElementById('check-timing-answer-btn').classList.remove('hidden');
-    document.getElementById('next-timing-problem-btn').classList.add('hidden');
-    document.getElementById('timing-result-message').textContent = '';
-    document.getElementById('timing-explanation-container').classList.add('hidden');
-    timingChartInstances.forEach(chart => chart.destroy());
-    timingChartInstances = [];
-    generateTimingProblem();
-    drawTimingProblemCharts();
-}
+function updateCircuitResultsPanel() {
+    const answered = userCircuitResults.filter(r => r).length;
+    const correct = userCircuitResults.filter(r => r?.correct).length;
+    const percentage = answered === 0 ? 0 : Math.round((correct / answered) * 100);
+    document.getElementById('circuit-score').textContent = `正解率: ${correct}/${answered}問 (${percentage}%)`;
+    
+    const progressBar = document.getElementById('circuit-progress-bar');
+    progressBar.style.width = `${(answered / circuitProblems.length) * 100}%`;
 
-function generateTimingProblem() {
-    const gates = ['AND', 'OR', 'NAND', 'NOR', 'XOR'];
-    const correctGate = gates[Math.floor(Math.random() * gates.length)];
-    const inputA = Array.from({length: 8}, () => Math.round(Math.random()));
-    const inputB = Array.from({length: 8}, () => Math.round(Math.random()));
-    const correctAnswer = inputA.map((a, i) => gateInfo[correctGate].calculate(a, inputB[i]));
-    let options = [{ gate: correctGate, waveform: correctAnswer, isCorrect: true }];
-    let wrongGates = gates.filter(g => g !== correctGate);
-    while (options.length < 4) {
-        const wrongGate = wrongGates.splice(Math.floor(Math.random() * wrongGates.length), 1)[0];
-        const wrongAnswer = inputA.map((a, i) => gateInfo[wrongGate].calculate(a, inputB[i]));
-        options.push({ gate: wrongGate, waveform: wrongAnswer, isCorrect: false });
-    }
-    options.sort(() => Math.random() - 0.5);
-    currentTimingProblem = { gate: correctGate, inputA, inputB, options, explanation: `この波形は${gateInfo[correctGate].title}の動作を示します。${gateInfo[correctGate].description}`};
-}
-
-function drawTimingProblemCharts() {
-    const { gate, inputA, inputB, options } = currentTimingProblem;
-    document.getElementById('timing-problem-gate-type').textContent = gate;
-    const inputCtx = document.getElementById('timing-problem-chart-input').getContext('2d');
-    timingChartInstances.push(new Chart(inputCtx, createTimingChartConfig(inputA, inputB, null)));
-    const optionsContainer = document.getElementById('timing-options-container');
-    optionsContainer.innerHTML = '';
-    options.forEach((opt, index) => {
-        const optionId = `timing-option-chart-${index}`;
-        const card = document.createElement('div');
-        card.className = 'timing-option-card';
-        card.dataset.isCorrect = opt.isCorrect;
-        card.innerHTML = `<p class="font-bold text-center mb-2">選択肢 ${index + 1}</p><div class="chart-container-option"><canvas id="${optionId}"></canvas></div>`;
-        optionsContainer.appendChild(card);
-        const optCtx = document.getElementById(optionId).getContext('2d');
-        timingChartInstances.push(new Chart(optCtx, createTimingChartConfig(null, null, opt.waveform)));
-        card.addEventListener('click', () => {
-            document.querySelectorAll('.timing-option-card').forEach(c => c.classList.remove('selected'));
-            card.classList.add('selected');
-        });
+    const listEl = document.getElementById('circuit-results-list');
+    listEl.innerHTML = '';
+    circuitProblems.forEach((_, index) => {
+        const result = userCircuitResults[index];
+        const li = document.createElement('li');
+        li.className = 'result-item';
+        li.onclick = () => loadCircuitProblem(index, true);
+        const status = result ? (result.correct ? '<span class="status-icon correct">〇</span>' : '<span class="status-icon incorrect">×</span>') : '';
+        li.innerHTML = `<span>問題 ${index + 1}</span> ${status}`;
+        listEl.appendChild(li);
     });
 }
 
-function createTimingChartConfig(dataA, dataB, dataY) {
-    const datasets = [];
-    if (dataA) datasets.push({ label: '入力A', data: dataA.map(d => d + 2), borderColor: 'rgb(59, 130, 246)', stepped: true });
-    if (dataB) datasets.push({ label: '入力B', data: dataB, borderColor: 'rgb(239, 68, 68)', stepped: true });
-    if (dataY) datasets.push({ label: '出力Y', data: dataY, borderColor: 'rgb(22, 163, 74)', stepped: true, borderWidth: 3 });
-    return {
-        type: 'line', data: { labels: Array.from({length: 8}, (_, i) => i), datasets: datasets },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: { y: { min: -0.5, max: (dataY ? 1.5 : 3.5), ticks: { display: false }, grid: { color: '#e5e7eb' } }, x: { ticks: { display: false }, grid: { display: false } } },
-            plugins: { legend: { display: !!(dataA || dataB) } }
-        }
-    };
+// --- タイムチャート問題セクション ---
+function setupTimingProblems() {
+    timingProblems = [...timingProblemBank].sort(() => Math.random() - 0.5).slice(0, TOTAL_PROBLEMS);
+    userTimingResults = new Array(timingProblems.length).fill(null);
+    loadTimingProblem(0);
+    updateTimingResultsPanel();
+}
+function resetTimingProblems() {
+    setupTimingProblems();
+    showToast("チャート問題をリセットしました！", true);
 }
 
-function checkTimingAnswer() {
-    const selected = document.querySelector('.timing-option-card.selected');
-    if (!selected) return;
-    const isCorrect = selected.dataset.isCorrect === 'true';
-    const resultMsg = document.getElementById('timing-result-message');
-    resultMsg.textContent = isCorrect ? '正解！' : '不正解...';
-    resultMsg.className = isCorrect ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
-    document.getElementById('timing-explanation-text').innerHTML = currentTimingProblem.explanation;
+function loadTimingProblem(index, isReview = false) {
+    currentTimingProblemIndex = index;
+    const problem = timingProblems[index];
+    selectedTimingOption = null;
+    document.getElementById('timing-problem-number').textContent = index + 1;
+    document.getElementById('timing-problem-gate-type').textContent = problem.gate;
+    const datasets = [{ label: '入力A', data: problem.inputA, borderColor: '#38bdf8' }];
+    if (problem.inputB) datasets.push({ label: '入力B', data: problem.inputB, borderColor: '#f472b6' });
+    renderTimingChart('timing-problem-chart-input', datasets, true);
+
+    const optionsContainer = document.getElementById('timing-options-container');
+    optionsContainer.innerHTML = '';
+    const correctOutput = calculateGateOutput(problem.gate, problem.inputA, problem.inputB);
+    let options = [{ data: correctOutput, isCorrect: true }];
+    while (options.length < 4) {
+        options.push({ data: generateDistractorOutput(correctOutput, options), isCorrect: false });
+    }
+    options.sort(() => Math.random() - 0.5);
+    
+    timingOptionCharts.forEach(chart => chart.destroy());
+    timingOptionCharts = [];
+
+    options.forEach((opt, i) => {
+        const card = document.createElement('div');
+        card.className = 'timing-option-card';
+        card.onclick = () => selectTimingOption(card, i, opt.isCorrect);
+        card.dataset.isCorrect = String(opt.isCorrect);
+        card.dataset.index = i;
+        card.innerHTML = `<p class="font-bold text-center">選択肢 ${i + 1}</p><div class="chart-container h-24 max-h-24 mt-2"><canvas id="option-chart-${i}"></canvas></div>`;
+        optionsContainer.appendChild(card);
+        timingOptionCharts.push(renderTimingChart(`option-chart-${i}`, [{ label: '出力Y', data: opt.data, borderColor: '#34d399', borderWidth: 3 }], false));
+    });
+
+    document.getElementById('timing-explanation-container').classList.add('hidden');
+    document.getElementById('check-timing-answer-btn').classList.remove('hidden');
+    document.getElementById('next-timing-problem-btn').classList.add('hidden');
+
+    const result = userTimingResults[index];
+    if (isReview && result) {
+        selectedTimingOption = result.selected;
+        checkTimingAnswer(true);
+    }
+}
+
+function renderTimingChart(canvasId, datasets, isInputChart) {
+    const ctx = document.getElementById(canvasId)?.getContext('2d'); if (!ctx) return null; Chart.getChart(canvasId)?.destroy(); return new Chart(ctx, { type: 'line', data: { labels: Array.from({length: datasets[0].data.length}, (_, i) => i), datasets: datasets.map(ds => ({ ...ds, stepped: true, pointRadius: 0, borderWidth: 2 })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: isInputChart, position: 'bottom', labels: { boxWidth: 20, padding: 20 } }, tooltip: { enabled: false } }, scales: { y: { min: -0.2, max: 1.2, ticks: { stepSize: 1, callback: (v) => (v === 0 ? 'L' : (v === 1 ? 'H' : '')) } }, x: { display: false } } } });
+}
+
+function generateDistractorOutput(correct, existing) {
+    let distractor; let isUnique = false;
+    let attempts = 0;
+    while (!isUnique && attempts < 20) {
+        distractor = [...correct];
+        const type = Math.floor(Math.random() * 4);
+        const idx1 = Math.floor(Math.random() * distractor.length);
+        if (type === 0) distractor[idx1] = 1 - distractor[idx1];
+        else if (type === 1) { let idx2; do { idx2 = Math.floor(Math.random() * distractor.length); } while (idx1 === idx2); distractor[idx1] = 1 - distractor[idx1]; distractor[idx2] = 1 - distractor[idx2]; }
+        else if (type === 2) { distractor.pop(); distractor.unshift(Math.round(Math.random())); }
+        else distractor = distractor.map(bit => 1 - bit);
+        isUnique = !existing.some(out => JSON.stringify(out.data) === JSON.stringify(distractor));
+        attempts++;
+    }
+    return distractor;
+}
+
+function selectTimingOption(card, index, isCorrect) {
+    if (userTimingResults[currentTimingProblemIndex] !== null) return;
+    document.querySelectorAll('.timing-option-card.selected').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedTimingOption = { index, isCorrect };
+}
+
+function checkTimingAnswer(isReview) {
+    if (!isReview && !selectedTimingOption) {
+        return;
+    }
+
+    const problem = timingProblems[currentTimingProblemIndex];
+    let answerInfo;
+
+    if (isReview) {
+        const result = userTimingResults[currentTimingProblemIndex];
+        if (!result) return;
+        answerInfo = result.selected;
+    } else {
+        answerInfo = selectedTimingOption;
+        const isCorrect = selectedTimingOption.isCorrect;
+        
+        userTimingResults[currentTimingProblemIndex] = { selected: answerInfo, correct: isCorrect };
+        updateTimingResultsPanel();
+        showToast(isCorrect ? "正解です！" : "不正解です...", isCorrect);
+        
+        if (userTimingResults.filter(r => r !== null).length === timingProblems.length) {
+            startConfetti();
+        }
+    }
+
+    document.querySelectorAll('.timing-option-card').forEach(card => {
+        card.classList.add('disabled');
+        const isCorrectOption = card.dataset.isCorrect === 'true';
+        const isSelectedOption = answerInfo && (card.dataset.index == answerInfo.index);
+
+        if (isCorrectOption) {
+            card.classList.add('correct');
+        } else if (isSelectedOption) {
+            card.classList.add('incorrect');
+        }
+    });
+
+    document.getElementById('timing-explanation-text').textContent = `${problem.gate}ゲートは、${gateInfo[problem.gate].description} このルールに従って入力を確認すると、正解の波形が導き出せます。`;
     document.getElementById('timing-explanation-container').classList.remove('hidden');
     document.getElementById('check-timing-answer-btn').classList.add('hidden');
     document.getElementById('next-timing-problem-btn').classList.remove('hidden');
 }
 
+function updateTimingResultsPanel() {
+    const answered = userTimingResults.filter(r => r).length;
+    const correct = userTimingResults.filter(r => r?.correct).length;
+    const percentage = answered === 0 ? 0 : Math.round((correct / answered) * 100);
+    document.getElementById('timing-score').textContent = `正解率: ${correct}/${answered}問 (${percentage}%)`;
+    
+    const progressBar = document.getElementById('timing-progress-bar');
+    progressBar.style.width = `${(answered / timingProblems.length) * 100}%`;
 
+    const listEl = document.getElementById('timing-results-list');
+    listEl.innerHTML = '';
+    timingProblems.forEach((problem, index) => {
+        const result = userTimingResults[index];
+        const li = document.createElement('li');
+        li.className = 'result-item';
+        li.onclick = () => loadTimingProblem(index, true);
+        const status = result ? (result.correct ? '<span class="status-icon correct">〇</span>' : '<span class="status-icon incorrect">×</span>') : '';
+        li.innerHTML = `<span>問題 ${index + 1} (${problem.gate})</span> ${status}`;
+        listEl.appendChild(li);
+    });
+}
+
+// --- 初期化処理 ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Sidebar setup
+    document.getElementById('menu-button').addEventListener('click', toggleSidebar);
+    document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+    document.getElementById('reset-circuit-btn').addEventListener('click', resetCircuitProblems);
+    document.getElementById('reset-timing-btn').addEventListener('click', resetTimingProblems);
+    document.getElementById('check-circuit-answer-btn').addEventListener('click', () => checkCircuitAnswer(false));
+    document.getElementById('check-timing-answer-btn').addEventListener('click', () => checkTimingAnswer(false));
+    document.getElementById('next-circuit-problem-btn').addEventListener('click', () => {
+        let nextIdx = userCircuitResults.findIndex(r => r === null);
+        if (nextIdx === -1) nextIdx = (currentCircuitProblemIndex + 1) % circuitProblems.length;
+        loadCircuitProblem(nextIdx);
+    });
+    document.getElementById('next-timing-problem-btn').addEventListener('click', () => {
+        let nextIdx = userTimingResults.findIndex(r => r === null);
+        if (nextIdx === -1) nextIdx = (currentTimingProblemIndex + 1) % timingProblems.length;
+        loadTimingProblem(nextIdx);
+    });
+
+
+    // Chart.js Global Config
+    Chart.defaults.font.family = "'Noto Sans JP', sans-serif";
+
+    // Initialize charts
+    const bridgeCtx = document.getElementById('bridge-chart')?.getContext('2d');
+    if (bridgeCtx) bridgeChart = new Chart(bridgeCtx, { type: 'bar', data: { labels: ['R1', 'R2', 'R3', 'Rx'], datasets: [{ label: '抵抗値 [Ω]', data: [0,0,0,0], backgroundColor: ['#60a5fa', '#f87171', '#4ade80', '#c084fc'] }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+    
+    const timeCtx = document.getElementById('time-chart')?.getContext('2d');
+    if(timeCtx) timeChart = new Chart(timeCtx, { type: 'line', options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: -0.2, max: 1.2, ticks: { stepSize: 1, callback: (v) => (v === 0 ? 'L' : 'H') } } }, plugins: { legend: { position: 'bottom' } } }});
+    
+    // Initialize sections
+    switchGate('AND');
+    setupCircuitProblems();
+    setupTimingProblems();
+
+    // Set initial active section
+    showSection('home', document.querySelector('.sidebar-link'));
+});
 
